@@ -1,0 +1,161 @@
+{
+    "profile": {
+        "name": "Patricio Nicolas Massaro Rocca",
+        "contact_number": "+1-202-754-6052",
+        "email": "bpatomassaro@gmail.com",
+        "summary": "Lead Machine Learning engineer with experience in training and implementing machine learning models, data analysis, and strategic decision-making. Skilled in AWS, Databricks, MLFlow, SparkML, Pytorch, PowerBI, Synapse, Data Factory, Azure Analysis Services, Spark SQL, Tableau.",
+        "address": null
+    },
+    "experiences": [
+        {
+            "position_title": "Lead Machine Learning engineer",
+            "company_name": "Bairesdev",
+            "start_date": "2020",
+            "end_date": "2024",
+            "accomplishments": [
+                "First hire in the Machine Learning department of the company's growth acceleration service, leading a team of 3 people.",
+                "Trained and implemented prospect segmentation and rating models for over a hundred clients using AWS, Databricks, MLFlow, and SparkML, generating 500M daily predictions and doubling marketing campaign conversion rates.",
+                "Developed ML-based early detection algorithms, reducing the platform spam rate by 30%.",
+                "Designed and implemented a natural language processing deep learning model to classify inbound messages, reducing human workload by 37%.",
+                "Defined the data architecture to optimize ML models training, increasing performance metrics by 10%.",
+                "Conducted data analysis with Spark SQL and Tableau to drive strategic decision-making processes among top management."
+            ]
+        },
+        {
+            "position_title": "Thesis working student",
+            "company_name": "Ororatech",
+            "start_date": "2023",
+            "end_date": "2024",
+            "accomplishments": [
+                "Trained deep learning models in Pytorch for super-resolution, achieving a 20% error reduction in land surface temperature estimation with applications in wildfire management.",
+                "Implemented a deep convolutional model for fine-scale georeferencing of thermal data products, improving accuracy in disaster monitoring applications."
+            ]
+        },
+        {
+            "position_title": "Business analytics engineer",
+            "company_name": "Tenaris",
+            "start_date": "2017",
+            "end_date": "2020",
+            "accomplishments": [
+                "Led the architectural design and workflow development for migrating the entire organization to a centralized cloud-based PowerBI application for 30,000 contributors.",
+                "Managed the population of the data warehouse using Synapse and Data Factory and designed the semantic layer using Azure Analysis Services, reducing costs by 17%.",
+                "Defined platform adoption KPIs and action plans for their improvement."
+            ]
+        },
+        {
+            "position_title": "Research intern",
+            "company_name": "University of Buenos Aires",
+            "start_date": "2017",
+            "end_date": "2018",
+            "accomplishments": [
+                "Published two papers about the effects of broadband piezoelectric devices in optoacoustic image reconstruction."
+            ]
+        },
+        {
+            "position_title": "Systems Administrator",
+            "company_name": "Masstec S.R.L",
+            "start_date": "2014",
+            "end_date": "2017",
+            "accomplishments": [
+                "Administration of small businesses server, workstation, and networking systems."
+            ]
+        },
+        {
+            "position_title": "Network administrator",
+            "company_name": "Education ministry, Buenos Aires",
+            "start_date": "2013",
+            "end_date": "2014",
+            "accomplishments": [
+                "Implemented 'Conectar Igualdad', an educational program launched by the Argentine government. Coordinated the distribution of laptops and integrated ICT into educational practices, enhancing digital literacy and access to technology to over 250 students."
+            ]
+        }
+    ],
+    "education": [
+        {
+            "degree": "Elite MSc Data Science",
+            "institution": "Ludwig-Maximilians-Universit\u00e4t, Munich, Germany",
+            "start_date": "2021",
+            "end_date": "2023",
+            "description": null,
+            "thesis_title": "Blind Super Resolution Applied to Thermal Remote Sensing Data Products"
+        },
+        {
+            "degree": "MSc Data Mining",
+            "institution": "Universidad de Buenos Aires, Argentina",
+            "start_date": "2020",
+            "end_date": "2021",
+            "description": null,
+            "thesis_title": null
+        },
+        {
+            "degree": "Electronic Engineering",
+            "institution": "Universidad de Buenos Aires, Argentina",
+            "start_date": "2010",
+            "end_date": "2018",
+            "description": null,
+            "thesis_title": "Improvements in optoacoustic image reconstruction using deconvolution filters"
+        }
+    ],
+    "hard_skills": [
+        {
+            "name": "AWS",
+            "years_of_experience": null
+        },
+        {
+            "name": "Databricks",
+            "years_of_experience": null
+        },
+        {
+            "name": "MLFlow",
+            "years_of_experience": null
+        },
+        {
+            "name": "SparkML",
+            "years_of_experience": null
+        },
+        {
+            "name": "Pytorch",
+            "years_of_experience": null
+        },
+        {
+            "name": "PowerBI",
+            "years_of_experience": null
+        },
+        {
+            "name": "Synapse",
+            "years_of_experience": null
+        },
+        {
+            "name": "Data Factory",
+            "years_of_experience": null
+        },
+        {
+            "name": "Azure Analysis Services",
+            "years_of_experience": null
+        },
+        {
+            "name": "Spark SQL",
+            "years_of_experience": null
+        },
+        {
+            "name": "Tableau",
+            "years_of_experience": null
+        }
+    ],
+    "soft_skills": [],
+    "languages": [
+        {
+            "language": "Spanish",
+            "proficiency": "Native language"
+        },
+        {
+            "language": "English",
+            "proficiency": "Bilingual proficiency"
+        },
+        {
+            "language": "German",
+            "proficiency": "Professional working proficiency"
+        }
+    ],
+    "personal_links": null
+}

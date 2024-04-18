@@ -76,9 +76,17 @@ class JobPosting:
     company_url: str
     industries: List[str]
     job_functions: List[str]
+    job_salary_range_min: Optional[int]=None
+    job_salary_range_max: Optional[int]=None
     job_poster_profile_url: Optional[str]=None
     job_poster_name: Optional[str]=None
     skills: Optional[List[str]]=None
+
+    #salary min should be less than salary max if they are not null
+    def __post_init__(self):
+        if self.job_salary_range_min and self.job_salary_range_max:
+            if self.job_salary_range_min>self.job_salary_range_max:
+                raise ValueError("Salary min should be less than salary max")
     
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False, indent=4)
@@ -105,6 +113,21 @@ class Institution:
     def to_dict(self) -> dict:
         return asdict(self)
 
+
+@dataclass
+class JobQuery:
+    url: str
+    keywords: Optional[str]=None
+    location: Optional[str]=None
+    salary_range_id: Optional[int]=None
+    time_filter_id: Optional[int]=None
+    experience_level_id: Optional[int]=None
+    remote_modality_id: Optional[int]=None
+    company_id: Optional[int]=None
+    
+    def to_dict(self) -> dict:
+        return asdict(self)
+    
 
 
 if __name__ == "__main__":

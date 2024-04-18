@@ -1,17 +1,19 @@
-from sqlalchemy import create_engine, Column, BigInteger, String, ForeignKey, Date, Text, ARRAY
-
+from sqlalchemy import create_engine, Column, BigInteger, String, ForeignKey, Date, Text, ARRAY, DateTime, Integer
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.schema import CheckConstraint
+
+
+from jobseeker.scraper.datatypes import CompanySize as CompanySizeEnum
+from sqlalchemy import event
 
 
 Base = declarative_base()
 
-## REQ CREATE THE DATABASE ( add to bash paths to use psql)
-
-
-
-
-
+class CompanySize(Base):
+    __tablename__ = 'company_sizes'
+    id = Column(BigInteger, primary_key=True)
+    text = Column(String)
 
 class Person(Base):
     __tablename__ = 'persons'
@@ -23,6 +25,8 @@ class Person(Base):
     email = Column(String)
     experiences = relationship("Experience", back_populates="person")
     educations = relationship("Education", back_populates="person")
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class Experience(Base):
     __tablename__ = 'experiences'
@@ -34,6 +38,8 @@ class Experience(Base):
     end_date = Column(Date, nullable=True)
     job_description = Column(Text)
     person = relationship("Person", back_populates="experiences")
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class Education(Base):
     __tablename__ = 'educations'
@@ -45,11 +51,14 @@ class Education(Base):
     end_date = Column(Date, nullable=True)
     description = Column(Text)
     person = relationship("Person", back_populates="educations")
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
 
 # JobPosting Model
 class JobPosting(Base):
     __tablename__ = 'job_postings'
-    job_id = Column(BigInteger, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
+    job_id = Column(BigInteger)
     title = Column(String)
     seniority_level = Column(String)
     employment_type = Column(String)
@@ -58,9 +67,21 @@ class JobPosting(Base):
     company_url = Column(String)
     industries = Column(ARRAY(String))
     job_functions = Column(ARRAY(String))
+    # foreign key to institutions table
+    institution_id = Column(BigInteger, ForeignKey('institutions.id'), nullable=True)
+    job_salary_range_max = Column(BigInteger, nullable=True)
+    job_salary_range_min = Column(BigInteger, nullable=True)
     job_poster_profile_url = Column(String, nullable=True)
     job_poster_name = Column(String, nullable=True)
     skills = Column(ARRAY(String), nullable=True)
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Check that range_min is less than range_max if both are not None
+    __table_args__ = (
+        CheckConstraint('job_salary_range_min <= job_salary_range_max', name='salary_range_min_max_check'),
+    )
+
 
 class Institution(Base):
     __tablename__ = 'institutions'
@@ -74,7 +95,49 @@ class Institution(Base):
     followers = Column(BigInteger)
     location = Column(String, nullable=True)
     specialties = Column(ARRAY(String), nullable=True)
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
 
-engine = create_engine('postgresql+psycopg2://postgres:holaguada2@localhost/jobseeker')
-Base.metadata.drop_all(engine)  # This drops all tables
-Base.metadata.create_all(engine)
+
+class FilterTime(Base):
+    __tablename__ = 'filter_time'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+class FilterSalaryRange(Base):
+    __tablename__ = 'filter_salary_range'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+class FilterExperienceLevel(Base):
+    __tablename__ = 'filter_experience_level'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+class FilterRemoteModality(Base):
+    __tablename__ = 'filter_remote_modality'
+    id = Column(Integer, primary_key=True)
+    name = Column(String)
+
+class JobQuery(Base):
+    __tablename__ = 'job_queries'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    url = Column(String)
+    keywords = Column(String, nullable=True)
+    location = Column(String, nullable=True)
+    company_id = Column(Integer, nullable=True)
+
+    # Set up foreign keys
+    salary_range_id = Column(Integer, ForeignKey('filter_salary_range.id'), nullable=True)
+    time_filter_id = Column(Integer, ForeignKey('filter_time.id'), nullable=True)
+    experience_level_id = Column(Integer, ForeignKey('filter_experience_level.id'), nullable=True)
+    remote_modality_id = Column(Integer, ForeignKey('filter_remote_modality.id'), nullable=True)
+
+class JobQueryResult(Base):
+    __tablename__ = 'job_query_results'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_query_id = Column(Integer, ForeignKey('job_queries.id'))
+    job_posting_id = Column(BigInteger, ForeignKey('job_postings.id'))
+    
+    
+    

@@ -7,39 +7,138 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from jobseeker.scraper.datatypes  import JobPosting  as JobPosting
 from jobseeker.scraper.database.models import JobPosting as JobPostingDBModel
-from jobseeker.scraper.logger import ExtractorLogger
+from jobseeker.logger import Logger
+from jobseeker.scraper.database.database_manager import DatabaseManager 
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
-# Update these values according to your database configuration
-DATABASE_URL = "postgresql+psycopg2://postgres:holaguada2@localhost/jobseeker"
-
-engine = create_engine(DATABASE_URL)
-Session = sessionmaker(bind=engine)
 
 
 
 JOB_POSTING_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/"
-MAXIMUM_RETRY_WAIT_TIME = 10
-MAXIMUM_RETRIES = 10
-WAIT_TIME_BETWEEN_REQUESTS_LIMITS = (1, 5)
+MAXIMUM_RETRIES = 20
+WAIT_TIME_BETWEEN_REQUESTS_LIMITS = (1, 15)
 
 class JobPostingDataExtractor:
     def __init__(self,
                  log_file_name: str = "scraper.log",
                  job_posting_base_url: str = JOB_POSTING_BASE_URL,
                  maximum_retries: int = MAXIMUM_RETRIES,
-                 retry_wait_time: int = MAXIMUM_RETRY_WAIT_TIME,
                  wait_time_limits: tuple = WAIT_TIME_BETWEEN_REQUESTS_LIMITS):
-        self.logger = ExtractorLogger(prefix="JobPostingDataExtractor",log_file_name=log_file_name).get_logger()
+        self.logger = Logger(prefix="JobPostingDataExtractor",log_file_name=log_file_name).get_logger()
         self.job_posting_base_url = JOB_POSTING_BASE_URL
         self.maximum_retries = maximum_retries
-        self.retry_wait_time = retry_wait_time
         self.wait_time_limits = wait_time_limits
 
     @staticmethod
-    def extract_job_description(job_soup: BeautifulSoup) -> str:
+    def _extract_job_criteria_based_on_string(job_soup: BeautifulSoup, text:str) -> str:
+        # Iterate through each li element
+        for li in job_soup.select('.description__job-criteria-item'):
+            # Extract the h3 text and corresponding span text
+            if li.find('h3').text.strip() == text:
+                return li.find('span', class_='description__job-criteria-text').text.strip()
+        return None
+
+    def _extract_seniority_level(self,job_soup: BeautifulSoup) -> str:
+        return self._extract_job_criteria_based_on_string(job_soup, "Seniority level")
+
+    def _extract_employment_type(self,job_soup: BeautifulSoup) -> str:
+        return self._extract_job_criteria_based_on_string(job_soup, "Employment type")
+
+    def _extract_job_functions(self,job_soup: BeautifulSoup) -> list:
+        job_functions = self._extract_job_criteria_based_on_string(job_soup, "Job function")
+        return [job_function.strip().replace("and ","") for job_function in job_functions.split(',')]
+    
+    def _extract_industries(self,job_soup: BeautifulSoup) -> list:
+        industries = self._extract_job_criteria_based_on_string(job_soup, "Industries")
+        return [industry.strip().replace("and ","") for industry in industries.split(',')]
+
+    
+
+    @staticmethod
+    def _extract_job_title(job_soup: BeautifulSoup) -> str:
+        """
+        Extracts the job title from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Job title text
+        """
+        return job_soup.find("h2", {"class": "top-card-layout__title font-sans text-lg papabear:text-xl font-bold leading-open text-color-text mb-0 topcard__title"}).text.strip()
+        
+    @staticmethod
+    def _extract_company_name(job_soup: BeautifulSoup) -> str:
+        """
+        Extracts the company name from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Company name text
+        """
+        return job_soup.find("a", class_="topcard__org-name-link topcard__flavor--black-link").text.strip()
+
+    @staticmethod
+    def _extract_company_url(job_soup: BeautifulSoup) -> str:
+        """
+        Extracts the company URL from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Company URL text
+        """
+        return job_soup.find("a", class_="topcard__org-name-link topcard__flavor--black-link")['href'].split("?trk")[0]
+
+    @staticmethod
+    def _extract_job_location(job_soup: BeautifulSoup) -> str:
+        """
+        Extracts the job location from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Job location text
+        """
+        return job_soup.find("span", class_="topcard__flavor topcard__flavor--bullet").text.strip()
+    
+    @staticmethod
+    def _extract_job_poster(job_soup: BeautifulSoup) -> dict:
+        name = ""
+        profile_url = ""
+        message_recruiter_div = job_soup.find("div", class_="message-the-recruiter")
+        if message_recruiter_div:
+            # If the div exists, find the <a> tag for the URL and name
+            profile_tag = message_recruiter_div.find("a", class_="base-card__full-link absolute top-0 right-0 bottom-0 left-0 p-0 z-[2]")
+            # Find the <h4> tag within the div for the detailed title
+            detail_title_tag = message_recruiter_div.find("h4", class_="base-main-card__subtitle body-text text-color-text overflow-hidden")
+            
+            if profile_tag and detail_title_tag:
+                # Extract the name, which is also visually hidden but available for screen readers
+                name = profile_tag.find("span", class_="sr-only").text.strip() if profile_tag.find("span", class_="sr-only") else None
+                # Extract the profile URL
+                profile_url = profile_tag.get('href', None).split("?trk")[0] if profile_tag.get('href', None) else None
+
+                # Extract the title
+                title = detail_title_tag.text.strip()
+                # Compile the extracted information
+                info = {
+                    "name": name,
+                    "title": title,
+                    "profile_url": profile_url
+                }
+                return info
+        else:
+            return None
+
+    @staticmethod
+    def _extract_salary_range(job_soup: BeautifulSoup) -> tuple:
+        """
+        Extracts the salary range from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Tuple of salary range (low, high)
+        """
+        salary_range = job_soup.find("div", class_="salary compensation__salary")
+        if salary_range:
+            # Extract the text and split it into low and high ranges
+            salary_text = salary_range.get_text(separator=" ", strip=True)
+            # Use regex to extract the numbers from the text
+            matches = re.findall(r'\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?', salary_text)
+            # if we found two matches, return them as a tuple
+            if len(matches) == 2:
+                return tuple(int(float(salary.replace('$', '').replace(',', ''))) for salary in matches)
+        return None
+
+    @staticmethod
+    def _extract_job_description(job_soup: BeautifulSoup) -> str:
         """
         Extracts and formats the job description from the job posting page
         :param job_soup: BeautifulSoup object of the job posting page
@@ -73,121 +172,44 @@ class JobPostingDataExtractor:
         # Join the formatted text pieces into a single string
         formatted_text = "\n\n".join(formatted_text_pieces)
 
-        return formatted_text
-
-    @staticmethod
-    def extract_job_criteria(job_soup: BeautifulSoup) -> dict:
-        """
-        Extracts and formats the job criteria from the job posting page
-        :param job_soup: BeautifulSoup object of the job posting page
-        :return: Dictionary of job criteria
-        """
-        criteria_dict = {}
-        job_criteria = job_soup.find_all("li", class_="description__job-criteria-item")
-        # Extracting and printing each component
-        for item in job_criteria:
-            # Extract the criteria name and detail
-            criteria_name = item.find("h3", class_="description__job-criteria-subheader").text.strip()
-            criteria_detail = item.find("span", class_="description__job-criteria-text description__job-criteria-text--criteria").text.strip()
-
-            # Add to the dictionary
-            criteria_dict[criteria_name] = criteria_detail
-
-        return criteria_dict
-        
-    @staticmethod
-    def extract_job_poster(job_soup: BeautifulSoup) -> dict:
-        name = ""
-        profile_url = ""
-        message_recruiter_div = job_soup.find("div", class_="message-the-recruiter")
-        if message_recruiter_div:
-            # If the div exists, find the <a> tag for the URL and name
-            profile_tag = message_recruiter_div.find("a", class_="base-card__full-link absolute top-0 right-0 bottom-0 left-0 p-0 z-[2]")
-            # Find the <h4> tag within the div for the detailed title
-            detail_title_tag = message_recruiter_div.find("h4", class_="base-main-card__subtitle body-text text-color-text overflow-hidden")
-            
-            if profile_tag and detail_title_tag:
-                # Extract the name, which is also visually hidden but available for screen readers
-                name = profile_tag.find("span", class_="sr-only").text.strip() if profile_tag.find("span", class_="sr-only") else None
-                # Extract the profile URL
-                profile_url = profile_tag.get('href', None).split("?trk")[0] if profile_tag.get('href', None) else None
-
-                # Extract the title
-                title = detail_title_tag.text.strip()
-                # Compile the extracted information
-                info = {
-                    "name": name,
-                    "title": title,
-                    "profile_url": profile_url
-                }
-                return info
-        else:
-            return None
-
-    @staticmethod
-    def extract_salaries(job_description: str) -> list:
-        # This pattern focuses on:
-        # - Optional dollar sign
-        # - Numbers potentially starting with $, possibly with a comma or period for thousands, and may end with "K" for thousands or specify "USD"
-        # - Ignores solitary small numbers that are unlikely to represent salaries
-
-        pattern = r'\$\d{1,3}(?:[.,]\d{3})*(?:-\$\d{1,3}(?:[.,]\d{3})*)?\s?(?:k|K|USD|usd)?|\d{1,3}(?:[.,]\d{3})+(?:-\d{1,3}(?:[.,]\d{3})*)?\s?(?:k|K|USD|usd)'
-
-        
-        # Find all matches in the job description
-        matches = re.findall(pattern, job_description)
-        
-        # Process matches to standardize format (optional, depending on your needs)
-        standardized_matches = [match.replace(',', '').replace('.', '').upper() for match in matches]
-        
-        return standardized_matches
+        return formatted_text    
 
     def extract_single_job_posting(self,job_id: str) -> JobPosting:
         job_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
         self.logger.info(f"{job_id} - Scraping job")
         retries= 0
         while retries < self.maximum_retries :
-            wait_time = random.randint(*self.wait_time_limits)
-            self.logger.info(f"{job_id} - Waiting {wait_time} seconds")
-            time.sleep(wait_time)
             job_request = requests.get(job_url)
             if job_request.status_code == 429:
-                self.logger.info(f"{job_id} - Too many requests, waiting {self.retry_wait_time} secs...")
-                time.sleep(self.retry_wait_time)
+                wait_time = random.randint(*self.wait_time_limits)
+                self.logger.info(f"{job_id} - Too many requests, waiting {wait_time} secs...")
+                time.sleep(wait_time)
                 retries += 1
                 continue
             job_data = job_request.text
             job_soup = BeautifulSoup(job_data, 'html.parser')
 
-            ###### Data Extraction
-            job_title = job_soup.find("h2", {"class": "top-card-layout__title font-sans text-lg papabear:text-xl font-bold leading-open text-color-text mb-0 topcard__title"}).text.strip()
-            company_name = job_soup.find("a", {"class": "topcard__org-name-link topcard__flavor--black-link"}).text.strip()
-            company_url = job_soup.find("a", {"class": "topcard__org-name-link topcard__flavor--black-link"})['href'].split("?trk")[0]
-            job_location = job_soup.find("span", {"class": "topcard__flavor topcard__flavor--bullet"}).text.strip()
 
-
-            # Extract data using the other methods
-            job_description_text = self.extract_job_description(job_soup)
-            job_criteria_dict = self.extract_job_criteria(job_soup)
-            job_poster_info = self.extract_job_poster(job_soup)
-            salary = self.extract_salaries(job_description_text)
+            job_poster_info = self._extract_job_poster(job_soup)
+            salary_range = self._extract_salary_range(job_soup)
 
             # You might need to adjust this part based on how you're initializing JobPosting
             job_posting = JobPosting(
                 job_id=job_id,
-                title=job_title,
-                seniority_level=job_criteria_dict.get("Seniority level", None),
-                employment_type=job_criteria_dict.get("Employment type", None),
-                job_description=job_description_text,
-                company=company_name,
-                company_url=company_url,
-                job_functions=job_criteria_dict.get("Job function", None),
-                industries=job_criteria_dict.get("Industries", None),
+                title=self._extract_job_title(job_soup),
+                seniority_level=self._extract_seniority_level(job_soup),
+                employment_type=self._extract_employment_type(job_soup),
+                job_description=self._extract_job_description(job_soup),
+                company=self._extract_company_name(job_soup),
+                company_url=self._extract_company_url(job_soup),
+                job_salary_range_min=salary_range[0] if salary_range else None,
+                job_salary_range_max=salary_range[1] if salary_range else None,
+                job_poster_profile_url = job_poster_info.get("profile_url", None) if job_poster_info else None,
+                job_poster_name = job_poster_info.get("name", None) if job_poster_info else None,
+                job_functions=self._extract_job_functions(job_soup),
+                industries=self._extract_industries(job_soup)
             )
-            if job_poster_info:
-                job_posting.job_poster_profile_url = job_poster_info.get("profile_url", None)
-                job_posting.job_poster_name = job_poster_info.get("name", None)
-
+            self.logger.info(f"{job_id} - Successfully extracted data")
             
             return job_posting
         self.logger.error(f"{job_id} Failed to extract data after {self.maximum_retries} retries.")
@@ -218,18 +240,13 @@ class JobPostingDataExtractor:
         
         return job_postings
 
-    def write_job_postings_to_database(self, session, job_postings: list):
+    def write_job_postings_to_database(self, job_postings: list):
+        database = DatabaseManager()
         for job_posting in job_postings:
-            try:
-                if job_posting:
-                    session.add(JobPostingDBModel(**job_posting.to_dict()))
-                    session.commit()
-                    self.logger.info(f"Job posting {job_posting.job_id} added to the database")
-            except Exception as e:
-                session.rollback()
-                self.logger.error(f"Failed to add job posting {job_posting.job_id} to the database: {e}")
-            finally:
-                session.close()
+            if job_posting:
+                job_posting_db=JobPostingDBModel(**job_posting.to_dict())
+                self.logger.info(f"{job_posting.job_id} - Adding to database")
+                database.upsert_object(job_posting_db,['job_id'])
 
 
 if __name__ == "__main__":
@@ -240,5 +257,5 @@ if __name__ == "__main__":
     end = time.time()
     print(f"Time taken: {end - start} seconds, got {len(job_postings)} job postings")
 
-    extractor.write_job_postings_to_database(Session(), job_postings)
+    extractor.write_job_postings_to_database(job_postings)
 

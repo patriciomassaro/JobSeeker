@@ -1,8 +1,0 @@
-requests
-beautifulsoup4
-selenium
-webdriver_manager
-langchain
-beautifulsoup4
-faiss-cpu
-chromadb

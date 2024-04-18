@@ -11,16 +11,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
+from fake_useragent import UserAgent
 
-
-
-
-from jobseeker.scraper.logger import ExtractorLogger
+from jobseeker.logger import Logger
 from jobseeker.scraper.datatypes import Institution,CompanySize
+from jobseeker.scraper.database.models import Institution as InstitutionDBModel
+from jobseeker.scraper.database.database_manager import DatabaseManager
 
 class CompanyExtractor:
     def __init__(self, search_page:str ="https://www.google.com/", log_file_name="scraper.log"):
-        self.logger = ExtractorLogger(prefix="LinkedInExtractor", log_file_name=log_file_name).get_logger()
+        self.logger = Logger(prefix="CompanyExtractor", log_file_name=log_file_name).get_logger()
         self.search_page = search_page
 
     @staticmethod
@@ -106,6 +106,43 @@ class CompanyExtractor:
                 return [specialty.strip().replace("and ","") for specialty in specialties_text.split(',')]
         return None
                 
+    @staticmethod
+    def extract_job_description(job_soup: BeautifulSoup) -> str:
+        """
+        Extracts and formats the job description from the job posting page
+        :param job_soup: BeautifulSoup object of the job posting page
+        :return: Formatted job description text
+        """
+        formatted_text_pieces = []
+        job_description_tag=job_soup.find("div", {"class": "show-more-less-html__markup"})
+        # Extract and format <strong> elements and following siblings until the next <strong> element or list
+        for child in job_description_tag.children:
+            if child.name == "strong":
+                    # Format headings
+                    formatted_text_pieces.append(f"{child.get_text().strip()}\n")
+            elif child.name == "p":
+                # Format paragraphs, handling <br> tags as new lines
+                text = child.get_text(separator="\n", strip=True)
+                formatted_text_pieces.append(text)
+            elif child.name in ["ul", "ol"]:
+                # Format lists
+                list_items = [li.get_text(separator="\n", strip=True) for li in child.find_all("li")]
+                formatted_list = "\n".join([f"- {item}" for item in list_items])
+                formatted_text_pieces.append(formatted_list)
+            elif child.name == "br":
+                # Optionally, handle breaks if needed
+                continue
+            else:
+                # Handle other types of elements as needed or ignore
+                text = child.get_text(separator="\n", strip=True)
+                if text:
+                    formatted_text_pieces.append(text)
+
+        # Join the formatted text pieces into a single string
+        formatted_text = "\n\n".join(formatted_text_pieces)
+
+        return formatted_text
+    
     def get_location_and_followers_from_html(self,company_soup: str):
         h3 = company_soup.find('h3', class_='top-card-layout__first-subline font-sans text-md leading-open text-color-text-low-emphasis')
         if h3:
@@ -147,17 +184,17 @@ class CompanyExtractor:
         self.logger.info(f"Searching for {company_url}")
         try:  
             driver.get(self.search_page)
-            time.sleep(2)
+            time.sleep(3)
             search_box = driver.find_element(By.NAME, "q")
             search_box.send_keys(company_url)
             search_box.send_keys(Keys.ENTER)
-            time.sleep(2)
+            time.sleep(3)
             for i in range(1, 10):
                 result = driver.find_element(By.XPATH, f"(//h3)[{i}]/../../a")
                 if "linkedin.com" in result.get_attribute("href"):
                     self.logger.info(f" found {company_url} in search result {i}")
                     result.click()
-                    time.sleep(3)
+                    time.sleep(5)
                     html = driver.page_source
                     return html
                 else:
@@ -170,9 +207,10 @@ class CompanyExtractor:
             driver.quit()
     
     def process_company(self, company_url: str) -> Institution:
+        user_agent = UserAgent().random
         options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
+        options.add_argument(f'--user-agent={user_agent}') 
+        options.add_argument("--headless").add_argument("--disable-gpu")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         wait = WebDriverWait(driver, 10)
 
@@ -205,11 +243,19 @@ class CompanyExtractor:
                     institutions.append(None)
 
         return institutions
-        
+
+    def write_companies_to_database(self, companies: list[Institution]):
+        database = DatabaseManager()
+        for company in companies:
+            if company:
+                company_db=InstitutionDBModel(**company.to_dict())
+                self.logger.info(f"{company.url} - Adding to database")
+                database.upsert_object(company_db,['url'])    
 
 if __name__ == "__main__":
-    scraper = CompanyExtractor(log_file_name="scraper.log")
-    companies = ["www.linkedin.com/company/bairesdev/",
+    start = time.time()
+    extractor = CompanyExtractor(log_file_name="scraper.log")
+    companies = ["www.linkedin.com/company/bairesdev",
                  "www.linkedin.com/company/Amazon",
                  "www.linkedin.com/company/Google",
                  "www.linkedin.com/company/Microsoft",
@@ -220,8 +266,9 @@ if __name__ == "__main__":
                  "www.linkedin.com/company/Twitter",
                  "www.linkedin.com/company/LinkedIn",
                  "www.linkedin.com/company/Uber"]
-
-    institutions = scraper.process_companies_parallel(companies, max_workers=5)
-    for institution in institutions:
-        if institution is not None:
-            print(institution.to_json()) 
+    companies = extractor.process_companies_parallel(companies, max_workers=20)
+    end = time.time()
+    # get the len of non None companies
+    companies = [company for company in companies if company]
+    print(f"Time taken: {end - start} seconds, got {len(companies)} companies")
+    extractor.write_company_to_database(companies)
