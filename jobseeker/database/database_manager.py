@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import event
-from jobseeker.scraper.database.models import Base, Person, Experience, Education, JobPosting, Institution,CompanySize,FilterTime,FilterSalaryRange,FilterExperienceLevel,FilterRemoteModality
+from jobseeker.database.models import Base, Person, Experience, Education, JobPosting, Institution,CompanySize,FilterTime,FilterSalaryRange,FilterExperienceLevel,FilterRemoteModality
 from jobseeker.scraper.datatypes import CompanySize as CompanySizeEnum
 from jobseeker.logger import Logger
 from jobseeker.scraper.query_builder.filters import FilterTime as FilterTimeEnum
@@ -11,10 +11,10 @@ from jobseeker.scraper.query_builder.filters import FilterRemoteModality as Filt
 
 
 DB_TYPE="postgresql+psycopg2"
-USERNAME="postgres"
-PASSWORD="holaguada2"
+USERNAME="pmassaro"
+PASSWORD="password"
 HOST="localhost"
-PORT="5432"
+PORT="5433"
 DB_NAME="jobseeker"
 
 

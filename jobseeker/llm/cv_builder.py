@@ -23,7 +23,7 @@ CV_PROMPT_TEMPLATE = """
 
         Follow these instructions to tailor the resume to the job description:
 
-        - Your output is a tex file and only a tex file, remember to check for .
+        - Your output is a tex file and only a tex file, remember to check for escape characters.
         - KEEP IT SIMPLE
         - You may change the job titles (Example: change ML engineer to Data Scientist), but don't lie about the roles.
         - DONT LIE ABOUT THE ROLES, IF THE PERSON NEVER WORKED IN PAYMENTS, dont add payments on their resume. Focus on technologies and skills.
