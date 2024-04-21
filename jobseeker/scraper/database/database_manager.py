@@ -87,7 +87,6 @@ class DatabaseManager:
 
     def get_session(self):
         return self.Session()
-
     def add_object(self, obj):
         session = self.get_session()
         try:

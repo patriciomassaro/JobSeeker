@@ -1,9 +1,12 @@
 import PyPDF2
 import re
+import os
 
-def extract_text(pdf_path: str):
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+def extract_text_from_pdf(pdf_path: str):
     resume_text = ""
-    with open(pdf_path, 'rb') as file:
+    with open(os.path.join(ROOT_PATH,pdf_path), 'rb') as file:
         pdf_reader = PyPDF2.PdfReader(file)
         num_pages = len(pdf_reader.pages)
 

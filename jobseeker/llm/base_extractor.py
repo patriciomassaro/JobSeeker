@@ -6,10 +6,13 @@ from langchain_community.callbacks import get_openai_callback
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import List, Optional
 from jobseeker.logger import Logger
-
+import warnings
+from pydantic.json_schema import PydanticJsonSchemaWarning
+warnings.filterwarnings("ignore", category=PydanticJsonSchemaWarning)
 
 
 from jobseeker.llm import LLMInitializer, ModelNames
+from jobseeker.scraper.database.database_manager import DatabaseManager
 
 
 CV_DATA_EXTRACTOR_SYSTEM_PROMPT_TEXT = "You are an expert extraction algorithm. Only extract relevant information from the text. If you do not know the value of an attribute asked to extract, return null for the attribute's value. \n {format_instructions} \n {input}"
@@ -22,6 +25,7 @@ class BaseLLMExtractor:
                  log_file_name="llm.log",
                  log_prefix="LLMExtractor"
                  ):
+        self.db = DatabaseManager()
         self.llm_init = LLMInitializer(model_name=model_name,temperature=temperature)
         self.llm = self.llm_init.get_llm()
         self.output_parser = JsonOutputParser(pydantic_object=pydantic_object)

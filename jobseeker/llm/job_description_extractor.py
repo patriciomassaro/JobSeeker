@@ -1,8 +1,11 @@
 import json
 from jobseeker.llm.base_extractor import BaseLLMExtractor
 from jobseeker.llm import ModelNames
+from jobseeker.scraper.database.database_manager import DatabaseManager 
+from jobseeker.scraper.database.models import JobPosting as JobPostingModel
 from pydantic import BaseModel, EmailStr, HttpUrl, Field, validator
 from typing import List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class JobDescription(BaseModel):
     title: str = Field(description="Job title for the position.")
@@ -58,7 +61,34 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                  log_prefix="JobDescriptionExtractor"
                  ):
         super().__init__(model_name=model_name, pydantic_object=JobPosting, temperature=temperature, log_prefix=log_prefix, log_file_name=log_file_name)
-        
+
+    def extract_job_posting_and_write_to_db(self,job_posting):
+        job_description_extraction = self.extract_data_from_text(text=job_posting['job_description'])
+        try:
+            session = self.db.get_session()
+            job_posting_record = session.query(JobPostingModel).filter(JobPostingModel.job_id == int(job_posting['job_id'])).first()
+            if job_posting_record:
+                job_posting_record.job_posting_summary = job_description_extraction
+                session.commit()
+                return 1
+                self.logger.info(f"Job posting {job_posting['job_id']} updated successfully.")
+        except Exception as e:
+            self.logger.error(f"An error occurred while updating job posting {job_posting['job_id']}: {e}")
+        finally:
+            session.close()
+
+    # Using ThreadPoolExecutor to parallelize the update process
+    def update_job_postings(self,job_postings_df):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # Submitting tasks to the executor
+            future_to_job_posting = {executor.submit(self.extract_job_posting_and_write_to_db, row): row for index, row in job_postings_df.iterrows()}
+            for future in as_completed(future_to_job_posting):
+                job_posting = future_to_job_posting[future]
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    self.logger.error(f'Job posting {job_posting["job_id"]} generated an exception: {exc}')
+            
 
 if __name__ == "__main__":
     from jobseeker.llm.utils import extract_text

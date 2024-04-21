@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, BigInteger, String, ForeignKey, Date, Text, ARRAY, DateTime, Integer
+from sqlalchemy import create_engine, Column, BigInteger, String, ForeignKey, Date, Text, ARRAY, DateTime, Integer, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from sqlalchemy.schema import CheckConstraint
@@ -75,6 +75,7 @@ class JobPosting(Base):
     job_poster_name = Column(String, nullable=True)
     skills = Column(ARRAY(String), nullable=True)
     date_created = Column(DateTime, default=func.now())
+    job_posting_summary = Column(JSON, nullable=True)
     date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
 
     # Check that range_min is less than range_max if both are not None
@@ -140,4 +141,15 @@ class JobQueryResult(Base):
     job_posting_id = Column(BigInteger, ForeignKey('job_postings.id'))
     
     
+class Users(Base):
+    __tablename__ = 'users'
+    id = Column(Integer, primary_key=True)
+    username = Column(String)
+    password = Column(String)
+    email = Column(String)
+    cv_pdf_path = Column(String)
+    cv_tex_path = Column(String, nullable=True)
+    cv_summary = Column(JSON, nullable=True)
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
     

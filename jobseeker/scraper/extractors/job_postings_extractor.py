@@ -15,8 +15,8 @@ from jobseeker.scraper.database.database_manager import DatabaseManager
 
 
 JOB_POSTING_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/"
-MAXIMUM_RETRIES = 20
-WAIT_TIME_BETWEEN_REQUESTS_LIMITS = (1, 15)
+MAXIMUM_RETRIES = 40
+WAIT_TIME_BETWEEN_REQUESTS_LIMITS = (1, 30)
 
 class JobPostingDataExtractor:
     def __init__(self,
@@ -210,7 +210,7 @@ class JobPostingDataExtractor:
                 industries=self._extract_industries(job_soup)
             )
             self.logger.info(f"{job_id} - Successfully extracted data")
-            
+            self.write_job_postings_to_database([job_posting])
             return job_posting
         self.logger.error(f"{job_id} Failed to extract data after {self.maximum_retries} retries.")
         return None

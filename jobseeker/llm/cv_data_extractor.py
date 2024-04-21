@@ -7,12 +7,16 @@ from typing import List
 from langchain_community.callbacks import get_openai_callback
 import PyPDF2
 import re
-
+import os
 
 from jobseeker.llm import ModelNames
 from jobseeker.llm.base_extractor import BaseLLMExtractor
+from jobseeker.llm.utils import extract_text_from_pdf
+from jobseeker.scraper.database.models import Users
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import List, Optional
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 class Profile(BaseModel):
     name: str = Field( description="Full name of the individual.")
@@ -83,6 +87,26 @@ class CVLLMExtractor(BaseLLMExtractor):
                  log_file_name="llm.log"
                  ):
         super().__init__(model_name=model_name, pydantic_object=CV, temperature=temperature, log_prefix=prefix, log_file_name=log_file_name)
+
+    def extract_cv_and_write_to_db(self,user_id:int):
+        cv_text = extract_text_from_pdf(os.path.join(ROOT_DIR,"media",f"{user_id}", "CV.pdf"))
+        cv_summary = self.extract_data_from_text(text=cv_text)
+        try:
+            session = self.db.get_session()
+            user_record = session.query(Users).filter(Users.id == user_id).first()
+            if user_record:
+                user_record.cv_summary = cv_summary
+                session.commit()
+                self.logger.info(f"Successfully extracted CV data for user {user_id}")
+                return 1
+        except Exception as e:
+            self.logger.error(f"Failed to extract CV data for user {user_id}. Error: {e}")
+            return 0
+        finally:
+            session.close()
+    
+
+
         
 
 if __name__ == "__main__":
@@ -94,5 +118,6 @@ if __name__ == "__main__":
     # Save the extracted data to a JSON file
     with open("cv_data.json", "w") as f:
         json.dump(cv_data, f, indent=4)
-    
 
+
+    

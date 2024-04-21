@@ -6,7 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import itertools
 
 from jobseeker.scraper.extractors.job_postings_extractor import JobPostingDataExtractor
-from jobseeker.scraper.extractors.company_extractor import CompanyExtractor
 from jobseeker.scraper.query_builder.query_builder import QueryBuilder
 from jobseeker.scraper.query_builder.query_builder import FilterRemoteModality, FilterSalaryRange, FilterTime,FilterExperienceLevel
 from jobseeker.logger import Logger
@@ -30,12 +29,11 @@ class MainOrchestrator:
         self.query_builder= QueryBuilder(base_url=jobs_base_url)
         self.database_manager= DatabaseManager()
         self.job_extractor= JobPostingDataExtractor()
-        self.company_extractor = CompanyExtractor(search_page="https://www.google.com")
         self.job_posting_max_workers = job_posting_max_workers
         self.company_max_workers = company_max_workers
 
     def perform_request(self,url):
-        maximum_retries= 20
+        maximum_retries= 30
         retry_count =0
         while retry_count < maximum_retries:
             job_request = requests.get(url)
@@ -43,7 +41,7 @@ class MainOrchestrator:
                 return job_request
             if job_request.status_code == 429:
                 self.logger.info("Too many requests, waiting before retrying...")
-                time.sleep(random.randint(1,10))
+                time.sleep(random.randint(1,30))
                 retry_count += 1
                 continue
         self.logger.error(f"Failed to extract data for url: {url}")
@@ -82,6 +80,7 @@ class MainOrchestrator:
             return job_results, any(flag_results)
 
     def add_job_query_results_to_database(self,job_ids:list[int], query_id:int):
+        self.logger.info(f"Adding relation between job query {query_id} and job postings")
         session = self.database_manager.get_session()
         for job_id in job_ids:
             job_posting_primary_key = session.query(JobPosting.id).filter(JobPosting.job_id == job_id).scalar()
@@ -89,10 +88,7 @@ class MainOrchestrator:
             session.close()
             self.database_manager.add_object(job_query_result)
         
-    def scrape_companies(self,company_urls:set[str]):
-        extracted_companies = self.company_extractor.process_companies_parallel(company_urls, max_workers=self.company_max_workers)
-        self.company_extractor.write_companies_to_database(extracted_companies)
-        return extracted_companies
+
 
     def run_scraping_job(self,
         keywords:str=None,
@@ -120,7 +116,6 @@ class MainOrchestrator:
 
         url,query_id = self.query_builder.build_url()
         batch_start=0
-        company_url_set = set()
         job_ids = []
         # We fetch all the possible job_ids
         while True:
@@ -133,18 +128,8 @@ class MainOrchestrator:
         job_ids = list(set(job_ids)) 
         # Now that we have all the job_ids, we can start scraping the job postings
         scraped_job_postings=self.job_extractor.extract_job_postings(job_ids=job_ids,max_workers=self.job_posting_max_workers)
-        # Extract the scraped url for further company extraction
-        company_url_set.update([job.company_url for job in scraped_job_postings if job])
-        self.job_extractor.write_job_postings_to_database(scraped_job_postings)
-        self.logger.info(f"Adding relation between job query {query_id} and job postings")
         self.add_job_query_results_to_database(job_ids,query_id)
         self.logger.info("Finished scraping job postings")
-        self.logger.info("Starting to scrape companies")
-        extracted_companies = self.scrape_companies(company_url_set)
-        self.logger.info(f"Finished scraping {len(extracted_companies)} companies related to the job postings")
-
-        
-
 if __name__ == "__main__":
 
 
@@ -155,13 +140,13 @@ if __name__ == "__main__":
                                     company_max_workers=2)
 
     orchestrator.run_scraping_job(
-        keywords="Applied Scientist grammarly",
-        location="washington dc",
+        keywords="machine learning",
+        location="",
         salary_range=FilterSalaryRange.RANGE_ANY,
         time_filter=FilterTime.ANY_TIME,
-        experience_level=FilterExperienceLevel.ANY_EXPERIENCE_LEVEL,
+        experience_level=FilterExperienceLevel.ANY_EXPERIENCE_LEVEL,    
         remote_modality=FilterRemoteModality.ANY_MODALITY,
-        
+        company_id=10595640
     )
 
     

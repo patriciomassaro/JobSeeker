@@ -209,8 +209,9 @@ class CompanyExtractor:
     def process_company(self, company_url: str) -> Institution:
         user_agent = UserAgent().random
         options = webdriver.ChromeOptions()
-        options.add_argument(f'--user-agent={user_agent}') 
-        options.add_argument("--headless").add_argument("--disable-gpu")
+        # options.add_argument(f'--user-agent={user_agent}') 
+        options.add_argument("--headless")
+        options.add_argument("--disable-gpu")
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         wait = WebDriverWait(driver, 10)
 
@@ -218,7 +219,9 @@ class CompanyExtractor:
         html = self.search_linkedin_company_and_get_html(company_url,driver,wait)
         # Parse the HTML of the company page and return the company details
         if html:
-            return Institution(url=company_url, **self.parse_company_html(html))
+            institution_db=Institution(url=company_url, **self.parse_company_html(html))
+            self.write_companies_to_database([institution_db])
+            return institution_db
         else:
             self.logger.error(f"Failed to get HTML for company: {company_url}")
             return None
@@ -266,9 +269,9 @@ if __name__ == "__main__":
                  "www.linkedin.com/company/Twitter",
                  "www.linkedin.com/company/LinkedIn",
                  "www.linkedin.com/company/Uber"]
-    companies = extractor.process_companies_parallel(companies, max_workers=20)
+    companies = extractor.process_companies_parallel(companies, max_workers=2)
     end = time.time()
     # get the len of non None companies
     companies = [company for company in companies if company]
     print(f"Time taken: {end - start} seconds, got {len(companies)} companies")
-    extractor.write_company_to_database(companies)
+    extractor.write_companies_to_database(companies)
