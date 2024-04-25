@@ -13,3 +13,5 @@ Requests==2.31.0
 selenium==4.19.0
 SQLAlchemy==2.0.28
 webdriver_manager==4.0.1
+sqlalchemy 
+psycopg2-binary

@@ -1,118 +1,81 @@
-\documentclass[11pt,a4paper]{moderncv}
-\moderncvtheme[green]{classic}                % idem
-\usepackage[T1]{fontenc}
-\usepackage[utf8x]{inputenc}
-\usepackage[italian]{babel}
-\usepackage[scale=0.8]{geometry}
-\recomputelengths                             
+\documentclass{moderncv}
+\usepackage{fix-cm}
+\moderncvtheme[green]{classic}
+\usepackage[scale=0.9]{geometry}              
 
-\fancyfoot{} 
+\firstname{Patricio}
+\familyname{Massaro}
 
-
-\renewcommand*{\namefont}{\fontsize{25}{28}\mdseries\upshape}
-
-\firstname{Patricio Nicolas}
-\familyname{Massaro Rocca}
-
-\address{District of Columbia, USA}{}    % optional, remove the line if not wanted
+\address{District of Columbia, USA}{}    
 \mobile{+1-202-754-6052}                    
 \email{patomassaro@gmail.com}                
-% \photo[105pt]{cv.png}      
-
 
 \begin{document}
-\maketitle
-\vspace{-10mm}
+    \pagestyle{empty}  
+    \maketitle
+    \vspace{-4mm} 
 
-%Section
-% \section{Personal information}
-% \cvcomputer{Birth date}{\small 1992/02/27\normalsize}{Nationality:}{\small Argentina \normalsize}
+    \section{Work experience}
+        \cventry{2020 - 2024}{Lead Machine Learning engineer}{Bairesdev}{}{}{
+            \begin{itemize}
+                \item First hire in the Machine Learning department of the company's growth acceleration service, leading a team of 3 people.
+                \item Train and implement prospect segmentation and rating models for over a hundred clients using XGBoost, SparkML, AWS, Databricks, Airflow, and MLFlow, generating 500M daily predictions and increasing conversion rates by 86\%.
+                \item Develop ML-based anomaly detection algorithms, reducing the platform spam rate by 30\%.
+                \item Design and implement an NLP deep learning model using MongoDB, Spacy, and AWS sagemaker to classify inbound messages, reducing human workload by 37\%.
+                \item Definition of the data architecture to optimize ML models training, increasing performance metrics by 10\%.
+                \item Conduct data analysis and reporting using Spark SQL and Tableau to drive strategic decision-making processes among top management.
+            \end{itemize} 
+        }
+        \vspace{0.2cm}
+        \cventry{2023 - 2024}{Research Engineer}{Ororatech}{}{}{  
+                \begin{itemize}
+                    \item Train GANs in Pytorch for remote-sensing blind super-resolution, achieving a 20\% error reduction in land surface temperature estimation with applications in wildfire management.
+                    \item Implement a deep convolutional model for fine-scale georeferencing of thermal data products, improving accuracy in disaster monitoring applications.
+                    \item Publish paper at IGARSS 2023 regarding multi-spectral remote sensing super-resolution.
+                \end{itemize} 
+        }
+        \vspace{0.2cm}
+        \cventry{2017 - 2020}{Business analytics engineer}{Tenaris}{}{}{
+            \begin{itemize}
+                \item Lead the architectural design and workflow development for migrating the entire organization to a centralized cloud-based PowerBI application for 3,000 contributors.
+                \item Manage the population of the data warehouse using Synapse and Data Factory and design the semantic layer using Azure Analysis Services, reducing costs by 17\%.
+                \item Definition of platform adoption KPIs and action plans for their improvement.
+            \end{itemize}
+        }
+        \vspace{0.2cm}
+        \cventry{2017 - 2018}{Research intern}{University of Buenos Aires}{}{}{ 
+            \begin{itemize}
+                \item Two publications regarding the effects of piezoelectric devices in optoacoustic image reconstruction.
+            \end{itemize}
+        }
+    \vspace{0.2cm}
+    \cventry{2014 - 2017}{Systems Administrator}{Masstec S.R.L}{}{}{
+        \begin{itemize}
+            \item Administration of small businesses server, workstation, and networking systems.
+        \end{itemize}
+    }
+    \vspace{0.2cm}
+    \cventry{2013- 2014}{Network administrator}{Education ministry, Buenos Aires}{}{}{
+        \begin{itemize}
+            \item Coordinate the distribution of laptops and integrate ICT into educational practices in the context of the "Conectar Igualdad" program, enhancing digital literacy  to over 250 students. 
+        \end{itemize}
+    }
 
-\vspace{-4mm}
+    \section{Education}
+    \cventry{2021-2023}{Elite MSc Data Science}{Ludwig-Maximilians-Universität}{Munich}{Germany}{
+        \begin{itemize}
+            \item Thesis: Blind Super Resolution Applied to Thermal Remote Sensing Data Products
+        \end{itemize}
+        }
+    \cventry{2020-2021}{MSc Data Mining}{Universidad de Buenos Aires}{}{Argentina}{}
+    \cventry{2010-2018}{Electronic Engineering}{Universidad de Buenos Aires}{}{Argentina}{
+        \begin{itemize}
+            \item Thesis: Improvements in optoacoustic image reconstruction using deconvolution filters.
+        \end{itemize}
+    }
 
-% \section{Profile}
-
-% \cvline{} {Holding a Master's degree in Data Science from LMU Munich, complemented by a background in electronic engineering, I bring 5 years of experience designing and implementing end-to-end machine learning pipelines aligned to business needs. I am eager to leverage my expertise in a role that challenges me to contribute to solutions and products that would improve people's lives. 
-% }
-
-\section{Work experience}
-
-\cventry{2020 - 2024 }{Lead Machine Learning engineer}{\href{https://www.bairesdev.com/}{Bairesdev}}{}{}{
-\begin{itemize}
-    \item First hire in the Machine Learning department of the company's growth acceleration service, leading a team of 3 people.
-    \item Train and implement prospect segmentation and rating models for over a hundred clients using AWS, Databricks, Airflow, MLFlow, and SparkML, generating 500M daily predictions and doubling marketing campaign conversion rates.
-    \item Develop ML-based anomaly detection algorithms, reducing the platform spam rate by 30\%.
-    \item Design and implement a natural language processing deep learning model to classify inbound messages, reducing human workload by 37\%.
-    \item Definition of the data architecture to optimize ML models training, increasing performance metrics by 10\%.
-    \item Conduct data analysis with Spark SQL and Tableau to drive strategic decision-making processes among top management.
-\end{itemize} 
-}
-
-\cventry{2023-2024}{Thesis working student}{\href{https://ororatech.com/}{\href{https://ororatech.com/}{Ororatech}}}{}{}{  \begin{itemize}
-    \item Train GANs in Pytorch for remote-sensing blind super-resolution, achieving a 20 \% error reduction in land surface temperature estimation with applications in wildfire management.
-    \item Implement a deep convolutional model for fine-scale georeferencing of thermal data products, improving accuracy in disaster monitoring applications.
-    \item Publish paper at IGARSS 2023 regarding multi-spectral remote sensing super-resolution.
-\end{itemize} }
-
-\cventry{ 2017 - 2020}{Business analytics
- engineer}{\href{https://www.tenaris.com/en}{Tenaris}}{}{}{
- \begin{itemize}
-     \item Led the architectural design and workflow development for migrating the entire organization to a centralized cloud-based PowerBI application for 30,000 contributors.
-     \item Manage the population of the data warehouse using Synapse and Data Factory and design the semantic layer using Azure Analysis Services, reducing costs by 17\%.
-     \item Definition of platform adoption KPIs and action plans for their improvement.
- \end{itemize}
- }
-
- \cventry{ 2017 - 2018}{Research intern}{University of Buenos Aires}{}{}{ \begin{itemize}
-     \item Two publications regarding the effects of piezoelectric devices in optoacoustic image reconstruction.
- \end{itemize}}
-
- \vspace{0.2cm}
-\cventry{2014 - 2017}{Systems Administrator}{Masstec S.R.L}{}{}{
-    \begin{itemize}
-        \item Administration of small businesses server, workstation, and networking systems.
-    \end{itemize}
-}
-\vspace{0.2cm}
-\cventry{2013- 2014}{Network administrator}{Education ministry, Buenos Aires}{}{}{
-\begin{itemize}
-    \item Coordinate the distribution of laptops and integrate ICT into educational practices in the context of the "Conectar Igualdad" program, enhancing digital literacy  to over 250 students. 
-\end{itemize}
-}
-
-
-\section{Education}
-\cventry{2021-2023}{ Elite MSc Data Science}{\href{https://www.m-datascience.mathematik-informatik-statistik.uni-muenchen.de/index.html}{Ludwig-Maximilians-Universität}}{Munich}{Germany}{Thesis: Blind Super Resolution Applied to Thermal Remote Sensing Data Products}
-\cventry{2020-2021}{ MSc Data Mining }{\href{http://datamining.dc.uba.ar/datamining/}{Universidad de Buenos Aires}}{}{Argentina}{}
-\cventry{2010-2018}{Electronic Engineering}{\href{https://www.fi.uba.ar/}{Universidad de Buenos Aires}}{}{Argentina}{Thesis: Improvements in optoacoustic image reconstruction using deconvolution filters.} 
-
-
-
-% The project consisted in the development and implementation of an analytical model for the broadband device, a reconstruction algorithm and a deconvolution filter to minimize the distortion introduced by the sensor.  
-
-
-
-
-
-% \section{Academic experience}
-
-% \cventry{2019}{DAAD}{Study trip scholarship}{Design and development of a 3-D bioprinter}{}{ I was awarded with a scholarship from the DAAD, for a 2-week study trip, visiting several universities in Baden-Württemberg and Bavaria. I participated in seminars, lab immersions and debates regarding the state of the art of biofabrication and additive manufacturing. The conclusions of this work were reflected in a book under the ISBN 978-987-778-959-1.}
-
-%Section
-
-%Section
-
-
-
-\section{Language}
-\cvline{Spanish}{Native language.}
-\cvline{English}{Bilingual proficiency.}
-\cvline{German}{Professional working proficiency.}
-
-\vspace{-3mm}
-
-
-
-
-
+    \section{Language}
+        \cvline{Spanish}{Native language.}
+        \cvline{English}{Bilingual proficiency.}
+        \cvline{German}{Professional working proficiency.}
 \end{document}

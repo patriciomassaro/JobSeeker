@@ -12,7 +12,7 @@ import os
 from jobseeker.llm import ModelNames
 from jobseeker.llm.base_extractor import BaseLLMExtractor
 from jobseeker.llm.utils import extract_text_from_pdf
-from jobseeker.scraper.database.models import Users
+from jobseeker.database.models import Users
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import List, Optional
 
@@ -88,20 +88,27 @@ class CVLLMExtractor(BaseLLMExtractor):
                  ):
         super().__init__(model_name=model_name, pydantic_object=CV, temperature=temperature, log_prefix=prefix, log_file_name=log_file_name)
 
-    def extract_cv_and_write_to_db(self,user_id:int):
-        cv_text = extract_text_from_pdf(os.path.join(ROOT_DIR,"media",f"{user_id}", "CV.pdf"))
-        cv_summary = self.extract_data_from_text(text=cv_text)
+    def extract_cv_and_write_to_db(self,user_id:int, replace_existing_summary:bool=False):
+        self.logger.info(f"Extracting CV data for user {user_id}")
         try:
             session = self.db.get_session()
             user_record = session.query(Users).filter(Users.id == user_id).first()
             if user_record:
-                user_record.cv_summary = cv_summary
-                session.commit()
-                self.logger.info(f"Successfully extracted CV data for user {user_id}")
-                return 1
+                if replace_existing_summary:
+                    cv_text = extract_text_from_pdf(os.path.join(ROOT_DIR,"media",f"{user_id}", "CV.pdf"))
+                    cv_summary = self.extract_data_from_text(text=cv_text)
+                    user_record.cv_summary = cv_summary
+                    session.commit()
+                    self.logger.info(f"Successfully extracted CV data for user {user_id}")
+                    return 1
+                else:
+                    self.logger.info(f"User {user_id} already has a CV summary. Set replace_existing_summary to True to overwrite.")
+            else:
+                self.logger.error(f"User with id {user_id} not found.")
+                return 0
         except Exception as e:
             self.logger.error(f"Failed to extract CV data for user {user_id}. Error: {e}")
-            return 0
+            raise e
         finally:
             session.close()
     

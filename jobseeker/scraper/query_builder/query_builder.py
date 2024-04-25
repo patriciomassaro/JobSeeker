@@ -10,10 +10,10 @@ from typing import List
 
 
 from jobseeker.scraper.query_builder.filters import FilterRemoteModality, FilterSalaryRange, FilterTime, FilterExperienceLevel,build_company_search_url
-from jobseeker.scraper.database.models import JobQuery as JobQueryDBModel
+from jobseeker.database.models import JobQuery as JobQueryDBModel
 from jobseeker.scraper.datatypes import JobQuery
 from jobseeker.logger import Logger
-from jobseeker.scraper.database.database_manager import DatabaseManager
+from jobseeker.database.database_manager import DatabaseManager
 
 
 

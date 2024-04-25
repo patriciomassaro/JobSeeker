@@ -9,8 +9,8 @@ from jobseeker.scraper.extractors.job_postings_extractor import JobPostingDataEx
 from jobseeker.scraper.query_builder.query_builder import QueryBuilder
 from jobseeker.scraper.query_builder.query_builder import FilterRemoteModality, FilterSalaryRange, FilterTime,FilterExperienceLevel
 from jobseeker.logger import Logger
-from jobseeker.scraper.database.database_manager import DatabaseManager
-from jobseeker.scraper.database.models import JobQueryResult,JobQuery,JobPosting
+from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database.models import JobQueryResult,JobQuery,JobPosting
 
 
 class MainOrchestrator:
@@ -83,7 +83,7 @@ class MainOrchestrator:
         self.logger.info(f"Adding relation between job query {query_id} and job postings")
         session = self.database_manager.get_session()
         for job_id in job_ids:
-            job_posting_primary_key = session.query(JobPosting.id).filter(JobPosting.job_id == job_id).scalar()
+            job_posting_primary_key = session.query(JobPosting.id).filter(JobPosting.id == job_id).scalar()
             job_query_result = JobQueryResult(job_query_id=query_id, job_posting_id=job_posting_primary_key)
             session.close()
             self.database_manager.add_object(job_query_result)
@@ -141,12 +141,12 @@ if __name__ == "__main__":
 
     orchestrator.run_scraping_job(
         keywords="machine learning",
-        location="",
+        location="United States",
         salary_range=FilterSalaryRange.RANGE_ANY,
         time_filter=FilterTime.ANY_TIME,
         experience_level=FilterExperienceLevel.ANY_EXPERIENCE_LEVEL,    
         remote_modality=FilterRemoteModality.ANY_MODALITY,
-        company_id=10595640
+        company_id=67088679
     )
 
     

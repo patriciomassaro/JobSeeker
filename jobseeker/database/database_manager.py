@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import event
-from jobseeker.database.models import Base, Person, Experience, Education, JobPosting, Institution,CompanySize,FilterTime,FilterSalaryRange,FilterExperienceLevel,FilterRemoteModality
+from jobseeker.database.models import Base, Person, CompanySize,FilterTime,FilterSalaryRange,FilterExperienceLevel,FilterRemoteModality,Users
 from jobseeker.scraper.datatypes import CompanySize as CompanySizeEnum
 from jobseeker.logger import Logger
 from jobseeker.scraper.query_builder.filters import FilterTime as FilterTimeEnum
@@ -12,9 +12,9 @@ from jobseeker.scraper.query_builder.filters import FilterRemoteModality as Filt
 
 DB_TYPE="postgresql+psycopg2"
 USERNAME="pmassaro"
-PASSWORD="password"
+PASSWORD="pmassaro"
 HOST="localhost"
-PORT="5433"
+PORT="5432"
 DB_NAME="jobseeker"
 
 
@@ -55,6 +55,24 @@ class DatabaseManager:
             finally:
                 session.close()
 
+    def populate_users(self):
+        session = self.get_session()
+        try:
+            if not session.query(Users).first():  # Check if table is already populated
+                session.add(Users(username="pmassaro",
+                                  name="Patricio Nicolas Massaro Rocca",
+                                   email="patomassaro@gmail.com",
+                                   password="123456",
+                    )
+                )
+                session.commit()
+                self.logger.info(f"Populated {Users.__tablename__} table successfully.")
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"Error populating {Users.__tablename__} table: {e}")
+        finally:
+            session.close()
+
 
     def drop_tables(self):
         try:
@@ -68,6 +86,7 @@ class DatabaseManager:
         self.drop_tables()
         self.create_tables()
         self.populate_company_sizes()
+        self.populate_users()
         self.populate_filters()
 
     def populate_company_sizes(self):

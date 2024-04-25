@@ -58,7 +58,6 @@ class Education(Base):
 class JobPosting(Base):
     __tablename__ = 'job_postings'
     id = Column(BigInteger, primary_key=True)
-    job_id = Column(BigInteger)
     title = Column(String)
     seniority_level = Column(String)
     employment_type = Column(String)
@@ -139,15 +138,25 @@ class JobQueryResult(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     job_query_id = Column(Integer, ForeignKey('job_queries.id'))
     job_posting_id = Column(BigInteger, ForeignKey('job_postings.id'))
+
+class RequirementsQualificationsComparison(Base):
+    __tablename__ = 'requirements_qualifications_comparisons'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_posting_id = Column(BigInteger, ForeignKey('job_postings.id'))
+    user_id = Column(BigInteger, ForeignKey('users.id'))
+    comparison = Column(JSON)
+    date_created = Column(DateTime, default=func.now())
+    date_updated = Column(DateTime, default=func.now(), onupdate=func.now())
     
     
 class Users(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
     username = Column(String)
+    name = Column(String)
     password = Column(String)
     email = Column(String)
-    cv_pdf_path = Column(String)
+    cv_pdf_path = Column(String, nullable=True)
     cv_tex_path = Column(String, nullable=True)
     cv_summary = Column(JSON, nullable=True)
     date_created = Column(DateTime, default=func.now())

@@ -15,8 +15,8 @@ from fake_useragent import UserAgent
 
 from jobseeker.logger import Logger
 from jobseeker.scraper.datatypes import Institution,CompanySize
-from jobseeker.scraper.database.models import Institution as InstitutionDBModel
-from jobseeker.scraper.database.database_manager import DatabaseManager
+from jobseeker.database.models import Institution as InstitutionDBModel
+from jobseeker.database.database_manager import DatabaseManager
 
 class CompanyExtractor:
     def __init__(self, search_page:str ="https://www.google.com/", log_file_name="scraper.log"):

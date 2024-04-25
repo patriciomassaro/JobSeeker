@@ -1,6 +1,6 @@
 from jobseeker.scraper.extractors.company_extractor import CompanyExtractor
-from jobseeker.scraper.database.database_manager import DatabaseManager
-from jobseeker.scraper.database.models import JobPosting,Institution
+from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database.models import JobPosting,Institution
 from sqlalchemy import exists
 
 db = DatabaseManager()

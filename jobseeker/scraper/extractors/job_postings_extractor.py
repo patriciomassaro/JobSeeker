@@ -6,9 +6,9 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from jobseeker.scraper.datatypes  import JobPosting  as JobPosting
-from jobseeker.scraper.database.models import JobPosting as JobPostingDBModel
+from jobseeker.database.models import JobPosting as JobPostingDBModel
 from jobseeker.logger import Logger
-from jobseeker.scraper.database.database_manager import DatabaseManager 
+from jobseeker.database.database_manager import DatabaseManager 
 
 
 
@@ -195,7 +195,7 @@ class JobPostingDataExtractor:
 
             # You might need to adjust this part based on how you're initializing JobPosting
             job_posting = JobPosting(
-                job_id=job_id,
+                id=job_id,
                 title=self._extract_job_title(job_soup),
                 seniority_level=self._extract_seniority_level(job_soup),
                 employment_type=self._extract_employment_type(job_soup),
@@ -245,8 +245,8 @@ class JobPostingDataExtractor:
         for job_posting in job_postings:
             if job_posting:
                 job_posting_db=JobPostingDBModel(**job_posting.to_dict())
-                self.logger.info(f"{job_posting.job_id} - Adding to database")
-                database.upsert_object(job_posting_db,['job_id'])
+                self.logger.info(f"{job_posting.id} - Adding to database")
+                database.upsert_object(job_posting_db,['id'])
 
 
 if __name__ == "__main__":

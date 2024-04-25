@@ -67,7 +67,7 @@ class Person:
 
 @dataclass
 class JobPosting:
-    job_id: int
+    id: int
     title: str
     seniority_level: str
     employment_type: str
