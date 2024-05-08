@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - JobSeeker App{% endblock %}
+
+{% block header %}Dashboard - {{user.name}}{% endblock %}
+
+{% block content %}
+<style>
+    .pre-container {
+        max-width: 100%;       /* Sets the width of the container to 50% of its parent */
+        width: 100%;         /* Sets the width of the container to 100% of its parent */
+        overflow: auto;   /* Adds scrollbars if content overflows */
+        white-space: pre-wrap; /* Wraps text */
+        word-wrap: break-word; /* Ensures words do not overflow the container */
+        padding: 10px;    /* Adds space around the text for readability */
+        border: 1px solid #ccc; /* Optional: adds a border around the text container */
+        margin-bottom: 20px; /* Adds space below the container */
+        box-sizing: border-box; /* Ensures padding and border are included in the width */
+    }
+</style>
+<div class="dashboard-container">
+    <!-- Tab links -->
+    <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'ViewInfo')" id="defaultOpen">View Information</button>
+        <button class="tablinks" onclick="openTab(event, 'EditInfo')">Edit Information</button>
+    </div>
+
+    <!-- Tab content -->
+    <div id="ViewInfo" class="tabcontent">
+        <!-- Content for viewing information -->
+        <div class="pdf-viewer-section">
+            {% if user.resume %}
+                <h2>Your uploaded PDF:</h2>
+                <iframe src="{{ url_for('users.serve_pdf', user_id=user.id) }}"  type="application/pdf"></iframe>
+                <h2>Your Additional Comments:</h2>
+                <p>{{ user.additional_info }}</p>
+            {% else %}
+                <h2>No PDF Uploaded Yet</h2>
+                <p>You haven't uploaded a PDF yet.</p>
+            {% endif %}
+            <h2>Personal Information:</h2>
+            <div class="pre-container">
+                {% if user.parsed_personal %}
+                <pre>{{ user.parsed_personal | tojson | safe }}</pre>
+                {% else %}
+                <p>Personal information not available.</p>
+                {% endif %}
+            </div>
+            <h2>Work Experiences:</h2>
+            <div class="pre-container">
+                {% if user.parsed_work_experiences %}
+                <pre>{{ user.parsed_work_experiences | tojson | safe }}</pre>
+                {% else %}
+                <p>No work experience available.</p>
+                {% endif %}
+            </div>
+            <h2>Educational Background:</h2>
+            <div class="pre-container">
+                {% if user.parsed_educations %}
+                <pre>{{ user.parsed_educations | tojson | safe }}</pre>
+                {% else %}
+                <p>No education information available.</p>
+                {% endif %}
+            </div>
+            <h2>Languages:</h2>
+            {% if user.parsed_languages %}
+                <div class="pre-container">
+                    <pre>{{ user.parsed_languages | tojson | safe }}</pre>
+                </div>
+            {% else %}
+                <p>No languages information available.</p>
+            {% endif %}
+            <h2>Skills:</h2>
+            <div class="pre-container">
+                {% if user.parsed_skills %}
+                <pre>{{ user.parsed_skills  }}</pre>
+                {% else %}
+                <p>No skills information available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div id="EditInfo" class="tabcontent">
+        <!-- Content for editing information -->
+        <div class="upload-section">
+            <h2>Your Resume</h2>
+            <form action="/users/upload_pdf" method="post" enctype="multipart/form-data">
+                <div>
+                    <label for="pdf_file">Upload your resume (only PDF):</label>
+                    <input type="file" id="pdf_file" name="pdf_file" accept="application/pdf">
+                    <button type="submit">Upload PDF</button>
+                </div>
+            </form>
+            <h2>Additional Information</h2>
+            <p>This info will be used to tailor your resume in addition to the PDF you uploaded.</p>
+            <form action="/users/save_comments" method="post">
+                <div>
+                    <label for="comments">Comments:</label>
+                    <textarea id="comments" name="comments" rows="10" placeholder="Add any comments here...">{{ user.additional_info }}</textarea>
+                    <button type="submit">Save Comments</button>
+                </div>
+            </form>
+            <h2>Parse PDF</h2>
+            <p> We will use LLMs to structure your resume info </p>
+            {% if user.resume %}
+                <form action="/users/parse_pdf" method="post">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    
+                    <!-- Dropdown for selecting the model -->
+                    <div>
+                        <label for="model_name">Choose a model:</label>
+                        <select id="model_name" name="model_name">
+                            {% for name, value in model_names %}
+                                <option value="{{ value }}">{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <button type="submit">Parse PDF</button>
+                </form>
+            {% else %}
+                <p>You need to upload a pdf to start parsing</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Default open the ViewInfo tab
+document.getElementById("defaultOpen").click();
+
+function openTab(evt, tabName) {
+    // Declare all variables
+    var i, tabcontent, tablinks;
+
+    // Get all elements with class="tabcontent" and hide them
+    tabcontent = document.getElementsByClassName("tabcontent");
+    for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+    }
+
+    // Get all elements with class="tablinks" and remove the class "active"
+    tablinks = document.getElementsByClassName("tablinks");
+    for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+    }
+
+    // Show the current tab, and add an "active" class to the button that opened the tab
+    document.getElementById(tabName).style.display = "block";
+    evt.currentTarget.className += " active";
+}
+</script>
+{% endblock %}
+
+{% block footer %}
+<!-- You can customize the footer here if needed -->
+{% endblock %}

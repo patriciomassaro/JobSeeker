@@ -2,7 +2,7 @@ import json
 import re
 from jobseeker.llm.base_extractor import BaseLLMExtractor
 from jobseeker.llm import ModelNames
-from jobseeker.database.database_manager import DatabaseManager 
+from jobseeker.database import DatabaseManager 
 from jobseeker.database.models import JobPosting as JobPostingModel, Institution as InstitutionModel, CompanySize as CompanySizeModel
 from pydantic import BaseModel, EmailStr, HttpUrl, Field, field_validator
 from typing import List, Optional
@@ -14,16 +14,16 @@ class Responsibilities(BaseModel):
 
 class Qualifications(BaseModel):
     experience_years: Optional[int] = Field(None, description="Required years of experience.")
-    must_have: Optional[List[str]] = Field(None, description="List of must-have qualifications/experiences for the job. Including proving track record, required verbal skills, things that the candidates care about, etc")
-    skills: List[str] = Field(description="List of essential skills for the job. This includes soft skills like leadership/communication but also technologies like Python, spark, databricks, azure, AWS, MongoDB, java, APIs, etc")
-    optional_skills: Optional[List[str]] = Field(None, description="List of additional skills that are beneficial but not mandatory.")
+    must_have: Optional[List[str]] = Field(None, description="List of must-have qualifications/experiences for the job")
+    nice_to_have: Optional[List[str]] = Field(None, description="List of optional or nice to have qualifications/experiences for the job.")
+    skills: List[str] = Field(description="List of essential skills for the job like technologies or programming languages. This includes soft skills")
     education: Optional[str] = Field(None, description="Minimum educational qualification required for the job.")
     
-class Compensation(BaseModel):
-    min: Optional[int] = Field(None, description="Minimum pay range for the position.")
-    mid: Optional[int] = Field(None, description="Midpoint pay range for the position.")
-    max: Optional[int] = Field(None, description="Maximum pay range for the position.")
-    additional_benefits: Optional[List[str]] = Field(None, description="List of additional benefits provided by the employer.")
+# class Compensation(BaseModel):
+#     min: Optional[int] = Field(None, description="Minimum pay range for the position.")
+#     mid: Optional[int] = Field(None, description="Midpoint pay range for the position.")
+#     max: Optional[int] = Field(None, description="Maximum pay range for the position.")
+#     additional_benefits: Optional[List[str]] = Field(None, description="List of additional benefits provided by the employer.")
 
 class JobDescription(BaseModel):
     title: str = Field(description="Job title for the position.")
@@ -34,7 +34,7 @@ class JobDescription(BaseModel):
     what_the_candidate_will_do: Optional[str] = Field(None, description="brief description of the candidate duties. Example: you will work with public data and diverse teams to build novel AI products.")
     responsibilities: Responsibilities = Field(description="Specific responsibilities associated with the job.")
     qualifications: Qualifications = Field(description="Qualifications and skills required for the job.")
-    compensation: Optional[Compensation] = Field(None, description="Compensation details including salary and benefits.")
+    # compensation: Optional[Compensation] = Field(None, description="Compensation details including salary and benefits.")
 
 
 class CompanyProfile(BaseModel):

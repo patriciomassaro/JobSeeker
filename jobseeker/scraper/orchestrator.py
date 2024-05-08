@@ -9,7 +9,7 @@ from jobseeker.scraper.extractors.job_postings_extractor import JobPostingDataEx
 from jobseeker.scraper.query_builder.query_builder import QueryBuilder
 from jobseeker.scraper.query_builder.query_builder import FilterRemoteModality, FilterSalaryRange, FilterTime,FilterExperienceLevel
 from jobseeker.logger import Logger
-from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database import DatabaseManager
 from jobseeker.database.models import JobQueryResult,JobQuery,JobPosting
 
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         time_filter=FilterTime.ANY_TIME,
         experience_level=FilterExperienceLevel.ANY_EXPERIENCE_LEVEL,    
         remote_modality=FilterRemoteModality.ANY_MODALITY,
-        company_id=67088679
+        company_id=3991657
     )
 
     

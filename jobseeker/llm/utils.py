@@ -1,24 +1,23 @@
 import PyPDF2
 import re
-import os
+from io import BytesIO
 
-ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-def extract_text_from_pdf(pdf_path: str):
+def extract_text_from_pdf_bytes(pdf_data: bytes):
     resume_text = ""
-    with open(os.path.join(ROOT_PATH,pdf_path), 'rb') as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-        num_pages = len(pdf_reader.pages)
+    # Create a file-like object from the bytes
+    file = BytesIO(pdf_data)
+    pdf_reader = PyPDF2.PdfReader(file)
+    num_pages = len(pdf_reader.pages)
 
-        for page_num in range(num_pages):
-            page = pdf_reader.pages[page_num]
-            text = page.extract_text().split("\n")
+    for page_num in range(num_pages):
+        page = pdf_reader.pages[page_num]
+        text = page.extract_text().split("\n")
 
-            # Remove Unicode characters from each line
-            cleaned_text = [re.sub(r'[^\x00-\x7F]+', '', line) for line in text]
+        # Remove Unicode characters from each line
+        cleaned_text = [re.sub(r'[^\x00-\x7F]+', '', line) for line in text]
 
-            # Join the lines into a single string
-            cleaned_text_string = '\n'.join(cleaned_text)
-            resume_text += cleaned_text_string
-        
-        return resume_text
+        # Join the lines into a single string
+        cleaned_text_string = '\n'.join(cleaned_text)
+        resume_text += cleaned_text_string
+    
+    return resume_text

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}JobSeeker App{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        nav {
+            background: #006bbf; /* slightly darker than header for contrast */
+            padding: 10px 0;
+            display: flex;
+            justify-content: center;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            font-weight: bold;
+        }
+        footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 10px 20px;
+            margin-top: auto;
+        }
+        .content {
+            flex: 1;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{% block header %}Welcome to JobSeeker{% endblock %}</h1>
+        {% if current_user.is_authenticated %}
+        <nav>
+            <a href="{{ url_for('users.dashboard') }}">User Config</a>
+            <a href="{{ url_for('job_search.index') }}">Job Search</a> 
+            <a href="{{ url_for('job_scrape.index') }}">Job Scraping</a> 
+            <a href="{{ url_for('companies.index') }}">Companies</a> 
+            <a href="{{ url_for('cover_letter_feedback.index') }}">Cover Letter Feedback</a> 
+            <a href="{{ url_for('cv_feedback.index') }}">CV Feedback</a>
+            
+
+        </nav>
+        {% else %}
+        <nav>
+            <a href="{{ url_for('auth.login') }}">Login</a> 
+        {% endif %}
+
+    </header>
+    <div class="content">
+        {% block content %}
+        <!-- Main content goes here -->
+        {% endblock %}
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <footer>
+        <p>
+            {% if user.is_authenticated %}
+                Hello, {{ user.name }}! <a href="{{ url_for('auth.logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('auth.login') }}">Login</a> | <a href="{{ url_for('auth.signup') }}">Sign Up</a>
+            {% endif %}
+        </p>
+        <p>{% block footer %}© 2024 JobSeeker, Inc.{% endblock %}</p>
+    </footer>
+</body>
+</html>
+
+

@@ -11,9 +11,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from jobseeker.logger import Logger
 from jobseeker.llm import LLMInitializer,ModelNames
-from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database import DatabaseManager
 from jobseeker.database.models import (
-    RequirementsQualificationsComparison as RequirementsQualitifactionsComparisonModel,
+    UserJobComparison as UserJobComparisonModel,
     JobPosting as JobPostingModel,
     Users as UsersModel
     )
@@ -49,14 +49,14 @@ REQUIREMENT_QUALIFICATION_COMPARISON_TEMPLATE = '''{{
             "actions": 
                 {{
                 "step_1": "map job requirements with the client's qualifications",
-                "step_2": "Think how the client's qualifications can be rewritten to make a compelling resume for that position",
-                "step_3": "Rewrite the client's qualifications to match the job description requirement language style"
+                "step_2": "Rewrite the client's qualifications to match the job description requirement language style"
                 }},
             "objective": "Your objective is to create requirement-qualification mappings so that a technical resume writer can use them to tailor the resume to the job description.",
             "inputs":
                 {{
                     "job_posting_data": "{job_posting_data}",
-                    "cv_data": "{cv_data}",
+                    "candidate_work_experience": "{parsed_worked_experiences}", 
+                    "candidate_skills": "{parsed_skills}",
                 }},
         }},
         "instructions":{{
@@ -65,7 +65,7 @@ REQUIREMENT_QUALIFICATION_COMPARISON_TEMPLATE = '''{{
                     "negotiation": "Quantitative things like years of experience are negotiable if the gap is small. Things like 'familiarity with' or 'advanced degree' or 'is a plus' are negotiable.",
                     "if_no_match": "If you can't find a meaningful connection, DO NOT LIE in order to include it.",
                 }},
-            "step_3":{{
+            "step_2":{{
                 "style": "The re-written qualification must be concise and action-oriented.",
                 "structure": "The client did X in the context of Y and achieved Z.",
                 "avoid_assumptions": "focus on describing the direct activities and outcomes from the CV, without extrapolating or assuming underlying skills unless explicitly stated. Avoid adding interpretations such as 'demonstrated proficiency' when converting qualifications into language matching job descriptions, unless such language is directly supported by the CV details"
@@ -74,10 +74,11 @@ REQUIREMENT_QUALIFICATION_COMPARISON_TEMPLATE = '''{{
 
         }},
         "restrictions":{{
-            number_of_matches: "It must be 6 or more matches between the job description and the cv qualification",
+            minimum_mathes_to_output: "6",
             "quality_assurance": "The re-written qualifications must reflect high-quality customization that aligns with the job description",
             "repetition": "Do not repeat the same qualification for multiple requirements",
-            "adjectives": "Do not use adjectives or adverbs; focus on verifiable achievements.",
+            "adjectives": "Do not use adjectives or adverbs anywhere",
+            "focus": "Focus on verifiable achievements",
             "output_format": "{output_format_instructions}"
         }}
 }}
@@ -134,6 +135,7 @@ class RequirementsQualificationsComparator:
                  examples:List[dict]=examples
                  ):
         self.db = DatabaseManager()
+        self.logger = Logger(prefix=log_prefix,log_file_name=log_file_name).get_logger()
         self.llm_init = LLMInitializer(model_name=model_name,temperature=temperature)
         self.llm = self.llm_init.get_llm()
         self.examples_str = self._generate_examples_string(examples=examples)
@@ -145,9 +147,11 @@ class RequirementsQualificationsComparator:
             partial_variables={
                 "output_format_instructions": self.output_parser.get_format_instructions(),
                 "examples": self.examples_str,
-                "cv_data": self._get_user_summary(user_id=user_id)},
+                "parsed_worked_experiences": self._get_user_attribute(user_id=user_id,attribute="parsed_work_experiences"),
+                "parsed_skills": self._get_user_attribute(user_id=user_id,attribute="parsed_skills")
+            }
         )
-        self.logger = Logger(prefix=log_prefix,log_file_name=log_file_name).get_logger()
+        
         self.chain = self.template | self.llm | self.output_parser
 
 
@@ -160,12 +164,12 @@ class RequirementsQualificationsComparator:
           for index, example in enumerate(examples)
         )
     
-    def _get_user_summary(self,user_id:int)->str:
+    def _get_user_attribute(self,user_id:int,attribute:str)->str:
         session = self.db.get_session()
         try:    
             user_columns = [
                     getattr(UsersModel, attr) for attr in UsersModel.__table__.columns.keys()
-                    if attr in ["cv_summary"] 
+                    if attr in [attribute] 
                 ]
             user = session.query(*user_columns).filter(UsersModel.id == user_id).first()
             user = json.dumps(user._asdict())
@@ -206,9 +210,9 @@ class RequirementsQualificationsComparator:
         session = self.db.get_session()
         try:
             comparison = (session
-                          .query(RequirementsQualitifactionsComparisonModel)
-                          .filter(RequirementsQualitifactionsComparisonModel.job_posting_id == job_id,
-                                  RequirementsQualitifactionsComparisonModel.user_id == self.user_id)
+                          .query(UserJobComparisonModel)
+                          .filter(UserJobComparisonModel.job_posting_id == job_id,
+                                  UserJobComparisonModel.user_id == self.user_id)
                           .first()
             )
             if comparison:
@@ -219,7 +223,7 @@ class RequirementsQualificationsComparator:
                 else:
                     self.logger.info(f"Comparison already exists for user {self.user_id} and job posting {job_id}")
             else:
-                comparison = RequirementsQualitifactionsComparisonModel(job_posting_id=job_id,
+                comparison = UserJobComparisonModel(job_posting_id=job_id,
                                                                         user_id=self.user_id,
                                                                         comparison=self._run_chain(job_posting_data=job_posting)
                                                                         )

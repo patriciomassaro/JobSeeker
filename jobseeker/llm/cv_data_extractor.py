@@ -1,29 +1,26 @@
-from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.pydantic_v1 import BaseModel, Field, validator
 import json
 from typing import List
-from langchain_community.callbacks import get_openai_callback
-import PyPDF2
 import re
 import os
 
 from jobseeker.llm import ModelNames
 from jobseeker.llm.base_extractor import BaseLLMExtractor
-from jobseeker.llm.utils import extract_text_from_pdf
+from jobseeker.llm.utils import extract_text_from_pdf_bytes
 from jobseeker.database.models import Users
 from pydantic import BaseModel, EmailStr, HttpUrl
 from typing import List, Optional
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-class Profile(BaseModel):
-    name: str = Field( description="Full name of the individual.")
+class Personal(BaseModel):
+    first_name: str = Field( description="Full name of the individual.")
+    last_name: str = Field( description="Last name of the individual.")
     contact_number: Optional[str] = Field(None, description="Contact phone number.")
     email: Optional[str] = Field(None, description="Email address.")
     summary: Optional[str] = Field(None, description="Brief summary about the individual's professional background.")
-    address: Optional[str] = Field(None, description="Home or work address.")
+    location: Optional[str] = Field(None, description="Location of the individual.")
+    personal_links: Optional[List[str]] = Field(None, description="List of personal or professional links like github,linkedin, etc.")
 
     # Validate the email address
     @validator('email')
@@ -34,23 +31,8 @@ class Profile(BaseModel):
                 raise ValueError("Invalid email address")
         return v
 
-class HardSkills(BaseModel):
-    """
-    This class represent all the relevant technologies and skills that the individual has. Examples are programming languages, frameworks, tools, etc.
-    """
-    name: str = Field( description="Name of the skill or technology.")
-    years_of_experience: Optional[float] = Field(None, description="Number of years of experience with the skill.")
-
-class SoftSkills(BaseModel):
-    """
-    This class represent all the relevant soft skills that the individual has. Examples are communication, leadership, teamwork, etc.
-    """
-    name: str = Field( description="Name of the soft skill.")
-    proficiency: Optional[str] = Field(None, description="Level of proficiency in the skill.")
-
-
 class WorkExperience(BaseModel):
-    position_title: str = Field( description="Title of the position held.")
+    title: str = Field( description="Title of the position held.")
     company_name: str = Field( description="Name of the company where the position was held.")
     start_date: str = Field( description="Start date of the employment in YYYY-MM format.")
     end_date: Optional[str] = Field(None, description="End date of the employment in YYYY-MM format, if applicable.")
@@ -61,48 +43,52 @@ class Education(BaseModel):
     institution: str = Field( description="Name of the educational institution.")
     start_date: str = Field( description="Start date of the degree program in YYYY-MM format.")
     end_date: Optional[str] = Field(None, description="End date of the degree program in YYYY-MM format, if applicable.")
-    description: Optional[str] = Field(None, description="Brief description of the course or program.")
-    thesis_title: Optional[str] = Field(None, description="Title of the thesis, if applicable.")
+    accomplishments: Optional[List[str]] = Field(None, description="List of achievements or responsibilities during studies.")
 
 class Language(BaseModel):
     language: str = Field( description="Name of the language.")
     proficiency: str = Field( description="Level of proficiency in the language.")
 
 class CV(BaseModel):
-    profile: Profile = Field( description="Profile information of the individual.")
-    experiences: List[WorkExperience] = Field( description="List of work experiences.")
-    education: List[Education] = Field( description="Educational background details.")
-    hard_skills: List[HardSkills] = Field(description="List of hard skills and years of experience.")
-    soft_skills: List[SoftSkills] = Field(None, description="List of soft skills and proficiency levels.")
+    personal: Personal = Field( description="Profile information of the individual.")
+    work_experiences: List[WorkExperience] = Field( description="List of work experiences.")
+    educations: List[Education] = Field( description="List of educational qualifications.")
+    skills: List[str] = Field(description="List of any skills described in the CV. Examples include hard-skills like programming languages, or soft-skills like communication, leadership,etc.")
     languages: Optional[List[Language]] = Field(None, description="List of languages spoken and proficiency levels.")
-    personal_links: Optional[List[HttpUrl]] = Field(None, description="List of personal or professional links.")
 
 
 
 class CVLLMExtractor(BaseLLMExtractor):
     def __init__(self,
-                 model_name:ModelNames,
+                 model_name:str,
                  temperature:float = 0,
                  prefix="CVExtractor",
                  log_file_name="llm.log"
                  ):
         super().__init__(model_name=model_name, pydantic_object=CV, temperature=temperature, log_prefix=prefix, log_file_name=log_file_name)
 
-    def extract_cv_and_write_to_db(self,user_id:int, replace_existing_summary:bool=False):
+    def extract_cv_and_write_to_db(self, user_id: int, replace_existing_summary: bool = False):
         self.logger.info(f"Extracting CV data for user {user_id}")
         try:
             session = self.db.get_session()
             user_record = session.query(Users).filter(Users.id == user_id).first()
             if user_record:
-                if replace_existing_summary:
-                    cv_text = extract_text_from_pdf(os.path.join(ROOT_DIR,"media",f"{user_id}", "CV.pdf"))
-                    cv_summary = self.extract_data_from_text(text=cv_text)
-                    user_record.cv_summary = cv_summary
+                # Check if the user has a resume uploaded and if we should replace the existing summary
+                if user_record.resume and (replace_existing_summary or not user_record.resume_summary):
+                    # Extract text from PDF data
+                    cv_text = extract_text_from_pdf_bytes(user_record.resume)
+                    resume_summary = self.extract_data_from_text(text=cv_text)
+                    user_record.parsed_personal = resume_summary.get("personal",{})
+                    user_record.parsed_work_experiences = resume_summary.get("work_experiences",{})
+                    user_record.parsed_educations = resume_summary.get("educations",{})
+                    user_record.parsed_skills = resume_summary.get("skills",[])
+                    user_record.parsed_languages = resume_summary.get("languages",{})
                     session.commit()
                     self.logger.info(f"Successfully extracted CV data for user {user_id}")
                     return 1
                 else:
-                    self.logger.info(f"User {user_id} already has a CV summary. Set replace_existing_summary to True to overwrite.")
+                    self.logger.info(f"User {user_id} already has a CV summary or no resume uploaded. Set replace_existing_summary to True to overwrite.")
+                    return 0
             else:
                 self.logger.error(f"User with id {user_id} not found.")
                 return 0

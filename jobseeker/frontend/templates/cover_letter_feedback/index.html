@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Cover Letter Paragraphs{% endblock %}
+
+{% block content %}
+<h2>Cover Letter Paragraphs</h2>
+
+<form action="/cover_letter_feedback" method="get">
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" value="{{ request.args.get('title', '') }}">
+    <label for="company">Company:</label>
+    <input type="text" id="company" name="company" value="{{ request.args.get('company', '') }}">
+    <!-- Create a button to press filter next to the input-->
+    <button type="submit">Filter</button>
+</form>
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Job Title</th>
+            <th>Company Name</th>
+            <th>Paragraph Number</th>
+            <th>Paragraph Text</th>
+            <th>Edit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for paragraph in paragraphs %}
+        <tr>
+            <td>{{ paragraph.title }}</td>
+            <td>{{ paragraph.company }}</td>
+            <td>{{ paragraph.paragraph_number }}</td>
+            <td>{{ paragraph.paragraph_text }}</td>
+            <td><a href="{{ url_for('cover_letter_feedback.edit_paragraph', paragraph_id=paragraph.id, comparison_id=paragraph.comparison_id ) }}">Edit</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

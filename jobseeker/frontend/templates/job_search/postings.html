@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Job Search{% endblock %}
+
+{% block header %}Job Postings - {{ user.name }}{% endblock %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Job Postings</title>
+    <script>
+        // JavaScript to toggle the job description
+        function toggleReadMore(btn, id) {
+            var content = document.getElementById(id);
+            if (btn.textContent.includes('Read More')) {
+                content.classList.add('full');
+                btn.textContent = 'Read Less';
+            } else {
+                content.classList.remove('full');
+                btn.textContent = 'Read More';
+            }
+        }
+    </script>
+     <style>
+        /* Inline CSS to manage the job description view */
+        .job-description {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            max-width: 150px; /* Adjust as needed */
+            display: inline-block;
+        }
+        .full {
+            white-space: normal;
+            overflow: visible;
+            max-width: none;
+        }
+    </style>
+</head>
+<body>
+    <form action="/job_search" method="get">
+        <label for="title">Title:</label>
+        <input type="text" id="title" name="title" value="{{ request.args.get('title', '') }}">
+        <label for="company">Company:</label>
+        <input type="text" id="company" name="company" value="{{ request.args.get('company', '') }}">
+        <label for="job_ids">Job IDs (comma-separated):</label>
+        <input type="text" id="job_ids" name="job_ids" value="{{ request.args.get('job_ids', '') }}">
+        <button type="submit">Filter</button>
+    </form>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Company</th>
+                <th>Seniority Level</th>
+                <th>Employment Type</th>
+                <th>About</th>
+                <th>Job Description</th>
+                <th>Parsed Summary</th>
+                <th> CV </th>
+                <th> Cover Letter </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for posting in postings %}
+            <tr>
+                <td>{{ posting.id }}</td>
+                <td>{{ posting.title }}</td>
+                <td>{{ posting.company }}</td>
+                <td>{{ posting.seniority_level }}</td>
+                <td>{{ posting.employment_type }}</td>
+                <td>{{ posting.institution.about }}</td>
+                <td>
+                    <div id="desc{{ posting.id }}" class="job-description">{{ posting.job_description }}</div>
+                    <button onclick="toggleReadMore(this, 'desc{{ posting.id }}')">Read More</button>
+                </td>
+                <td>
+                    {% if posting.job_posting_summary %}
+                        <div id="json-container-{{ posting.id }}"></div>
+                        <script>
+                            var jsonObj = {{ posting.job_posting_summary | tojson | safe }};
+                            document.getElementById('json-container-' + '{{ posting.id }}').textContent = JSON.stringify(jsonObj, null, 4);
+                        </script>
+                    {% endif %}
+                    <form action="{{ url_for('job_search.parse_job', job_id=posting.id) }}" method="post">
+                        <!-- Dropdown for selecting the model -->
+                        <div>
+                            <p> Parse using LLM:</p>
+                            <label for="model_name">Choose a model:</label>
+                            <select id="model_name" name="model_name">
+                                {% for name, value in model_names %}
+                                    <option value="{{ value }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit">Parse Job Description</button>
+                        </form>
+                </td>
+                <td>
+                    {% if posting.user_job_comparisons and posting.user_job_comparisons[0].cv_pdf%}
+                    <a href="{{ url_for('job_search.download_cv', user_id=current_user.id, job_id=posting.id) }}">Download CV</a>
+                    {% else %}
+                        <p>CV not available</p>
+                    {% endif %}
+                    <form action="{{ url_for('job_search.generate_cv', job_id=posting.id) }}" method="post">
+                        <div>
+                            <p>Compare Job Description:</p>
+                            <label for="model_name-comparison-{{ posting.id }}">Choose a model:</label>
+                            <select id="model_name-comparison-{{ posting.id }}" name="model_name">
+                                {% for name, value in model_names %}
+                                    <option value="{{ value }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="use_llm-{{ posting.id }}">Use LLM?</label>
+                            <select id="use_llm-{{ posting.id }}" name="use_llm">
+                                <option value="1">Yes</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+                        <button type="submit">Create CV</button>
+                    </form>
+                </td>
+                <td>
+                    {% if posting.user_job_comparisons and posting.user_job_comparisons[0].cover_letter_pdf%}
+                    <a href="{{ url_for('job_search.download_cover_letter', user_id=current_user.id, job_id=posting.id) }}">Download cover letter</a>
+                    {% else %}
+                        <p>Cover letter not available</p>
+                    {% endif %}
+                    <form action="{{ url_for('job_search.generate_cover_letter', job_id=posting.id) }}" method="post">
+                        <div>
+                            <p>Compare Job Description:</p>
+                            <label for="model_name-comparison-{{ posting.id }}">Choose a model:</label>
+                            <select id="model_name-comparison-{{ posting.id }}" name="model_name">
+                                {% for name, value in model_names %}
+                                    <option value="{{ value }}">{{ name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="use_llm-{{ posting.id }}">Use LLM?</label>
+                            <select id="use_llm-{{ posting.id }}" name="use_llm">
+                                <option value="1">Yes</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+                        <button type="submit">Create Cover Letter</button>
+                    </form>
+                </td>
+                
+                
+                <!-- Add more fields as needed -->
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">No job postings found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+
+{% endblock %}

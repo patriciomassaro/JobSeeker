@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Edit Paragraph{% endblock %}
+
+{% block content %}
+<h2>Edit Paragraph {{ paragraph.paragraph_number }}</h2>
+
+<!-- Job Summary -->
+<h3>Job Summary</h3>
+<div class = "limited-width">
+    <pre>{{ comparison.job_posting_summary | tojson(indent=4) }}</pre>
+</div>
+
+<!-- Comparison Data -->
+<h3>Comparison</h3>
+<div class = "limited-width">
+    <pre>{{ comparison.comparison | tojson(indent=4) }}</pre>
+</div>
+
+<!-- Complete Text of the Cover Letter -->
+<h3>Complete Cover Letter</h3>
+<div class = "limited-width">
+    <pre>{{ text }}</pre>
+</div>
+
+<!-- Form to Edit Paragraph -->
+<form method="POST">
+    <label for="paragraph_text">Paragraph Text</label>
+    <textarea id="paragraph_text" name="paragraph_text" rows="5" cols="40">{{ paragraph.paragraph_text }}</textarea>
+    <br>
+    <input type="submit" value="Update Paragraph">
+</form>
+
+{% endblock %}

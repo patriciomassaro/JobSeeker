@@ -11,10 +11,11 @@ class FilterEnum(Enum):
 
 
 class FilterTime(FilterEnum):
+    ANY_TIME = None
     PAST_24_HOURS = 86400
     PAST_WEEK = 604800
     PAST_MONTH = 2592000
-    ANY_TIME = None
+    
     
     # Specific implementation for TimeFilter
     @classmethod
@@ -22,6 +23,7 @@ class FilterTime(FilterEnum):
         return super().get_param(value, "f_TPR=r")
 
 class FilterSalaryRange(FilterEnum):
+    RANGE_ANY = None
     RANGE_40K_PLUS = 1
     RANGE_60K_PLUS = 2
     RANGE_80K_PLUS = 3
@@ -31,20 +33,21 @@ class FilterSalaryRange(FilterEnum):
     RANGE_160K_PLUS = 7
     RANGE_180K_PLUS = 8
     RANGE_200K_PLUS = 9
-    RANGE_ANY = None
+    
 
     @classmethod
     def get_param(cls, value):
         return super().get_param(value, "f_SB2=")
 
 class FilterExperienceLevel(FilterEnum):
+    ANY_EXPERIENCE_LEVEL = None
     INTERNSHIP = 1
     ENTRY_LEVEL = 2
     ASSOCIATE = 3
     MID_SENIOR_LEVEL = 4
     DIRECTOR = 5
     EXECUTIVE = 6
-    ANY_EXPERIENCE_LEVEL = None
+    
 
     @classmethod
     def get_param(cls, value):
@@ -54,10 +57,11 @@ def build_company_search_url(company_id:int = None):
     return f"f_C={company_id}" if company_id is not None else ""
 
 class FilterRemoteModality(FilterEnum):
+    ANY_MODALITY = None
     ON_SITE = 1
     REMOTE = 2
     HYBRID =3
-    ANY_MODALITY = None
+    
 
     @classmethod
     def get_param(cls, value):

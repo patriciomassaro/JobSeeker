@@ -11,11 +11,11 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.prompts import PromptTemplate
 from langchain_community.callbacks import get_openai_callback
 
-from jobseeker.database.database_manager import DatabaseManager 
+from jobseeker.database import DatabaseManager 
 from jobseeker.database.models import (
     Users as UsersModel,
     JobPosting as JobPostingModel,
-    RequirementsQualificationsComparison as RequirementsQualificationsComparisonModel
+    UserJobComparison as UserJobComparisonModel
     
 )
 
@@ -55,32 +55,33 @@ class BaseBuilder:
             # delete the file
             os.remove(file)
 
-    def _create_pdf_from_latex(self,latex_string, path):
-        # Write the LaTeX string to a file with the specified path
+    def _create_pdf_from_latex(self, latex_string, path) -> bytes:
         directory = os.path.dirname(path)
         tex_file_path = f"{path}.tex"
-        # make sure that the folder exists
+        pdf_file_path = f"{path}.pdf"
+
         if not os.path.exists(directory):
             os.makedirs(directory)
 
         with open(tex_file_path, "w") as file:
             file.write(latex_string)
         
-        # Run pdflatex to compile the LaTeX file into a PDF
         current_dir = os.getcwd()
         os.chdir(directory)
-
         process = subprocess.run(['pdflatex', '-interaction=nonstopmode', tex_file_path], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
         os.chdir(current_dir)
 
-        # Optionally, check for errors
         if process.returncode != 0:
             self.logger.error(f"Failed to compile the LaTeX file: \n {process.stdout} \n {process.stderr}")
-        else:
-            # Correct the print statement to reflect the actual output file name
-            output_filename = f"{path}.pdf"
-            self.logger.info(f"PDF created successfully: {output_filename}")
+            return None
+        
+        try:
+            with open(pdf_file_path, "rb") as pdf_file:
+                pdf_bytes = pdf_file.read()
+            return pdf_bytes
+        except Exception as e:
+            self.logger.error(f"Failed to read the PDF file: {str(e)}")
+            return None
 
     @staticmethod
     def _escape_latex(string):
@@ -114,36 +115,22 @@ class BaseBuilder:
     def _clean_latex_code_header(self,latex_code:str)->str:
         return latex_code.replace("```latex","").replace("```tex","").replace("```","") 
 
-    def _get_user_summary(self)->str:
+    def _get_user_attribute(self, attribute:str)->str:
         session = self.db.get_session()
-        try:    
+        try:
             user_columns = [
                     getattr(UsersModel, attr) for attr in UsersModel.__table__.columns.keys()
-                    if attr in ["cv_summary"] 
+                    if attr in [attribute] 
                 ]
             user = session.query(*user_columns).filter(UsersModel.id == self.user_id).first()
-            user = json.dumps(user._asdict())
-            return user
+            user = user._asdict()
+            return user[attribute]
         except Exception as e:
             self.logger.error(f"Error getting user data: {e}")
             raise e
         finally:
             session.close()
     
-    def _get_user_name(self)->str:
-        session = self.db.get_session()
-        try:    
-            user_columns = [
-                    getattr(UsersModel, attr) for attr in UsersModel.__table__.columns.keys()
-                    if attr in ["name",] 
-                ]
-            user = session.query(*user_columns).filter(UsersModel.id == self.user_id).first()
-            user = user._asdict()
-            return user["name"]
-        except Exception as e:
-            self.logger.error(f"Error getting user data: {e}")
-            raise e
-
     def _get_job_summary(self,job_id:int)->str:
         session = self.db.get_session()
         try:    
@@ -178,16 +165,14 @@ class BaseBuilder:
         finally:
             session.close()
 
-
-
     def _get_comparison_summary(self,job_id:int)->str:
         session = self.db.get_session()
         try:
             comparison_columns = [
-                    getattr(RequirementsQualificationsComparisonModel, attr) for attr in RequirementsQualificationsComparisonModel.__table__.columns.keys()
+                    getattr(UserJobComparisonModel, attr) for attr in UserJobComparisonModel.__table__.columns.keys()
                     if attr in ["comparison"] 
                 ]
-            comparison = session.query(*comparison_columns).filter(RequirementsQualificationsComparisonModel.job_posting_id == job_id, RequirementsQualificationsComparisonModel.user_id == self.user_id).first()
+            comparison = session.query(*comparison_columns).filter(UserJobComparisonModel.job_posting_id == job_id, UserJobComparisonModel.user_id == self.user_id).first()
             comparison = json.dumps(comparison._asdict())
             return comparison
         except Exception as e:
@@ -196,10 +181,10 @@ class BaseBuilder:
         finally:
             session.close()
 
-    def build(self, job_ids: List[int]):
+    def build(self, job_ids: List[int], use_llm: bool = True):
         with ThreadPoolExecutor(max_workers=5) as executor:
             # Submitting tasks to the executor
-            future_cv_creation = {executor.submit(self._build, job_id): job_id for job_id in job_ids}
+            future_cv_creation = {executor.submit(self._build, job_id,use_llm): job_id for job_id in job_ids}
             
             # Iterating over the completed futures
             for future in as_completed(future_cv_creation):

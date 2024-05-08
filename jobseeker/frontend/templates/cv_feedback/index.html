@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}CV paragraphs{% endblock %}
+
+{% block content %}
+
+<form action="{{ url_for('cv_feedback.index') }}" method="get">
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" value="{{ request.args.get('title', '') }}">
+    <label for="company">Company:</label>
+    <input type="text" id="company" name="company" value="{{ request.args.get('company', '') }}">
+    <button type="submit">Filter</button>
+</form>
+
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Years</th>
+            <th>WE company</th>
+            <th>WE Title</th>
+            <th>Accomplishments</th>
+            <th>Company</th>
+            <th>Title</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for work_experience in work_experiences %}
+        <tr>
+            <td>{{ work_experience.id }}</td>
+            <td>{{ work_experience.start_year }} - {{ work_experience.end_year }}</td>
+            <td>{{ work_experience.work_experience_company }}</td>
+            <td>{{ work_experience.work_experience_title }}</td>
+            <td>{{ work_experience.work_experience_accomplishments }}</td>
+            <td>{{ work_experience.job_company }}</td>
+            <td>{{ work_experience.job_title }}</td>
+            <td><a href="{{ url_for('cv_feedback.edit_work_experience', work_experience_id=work_experience.id) }}">Edit</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

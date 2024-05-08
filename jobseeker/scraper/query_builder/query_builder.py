@@ -13,7 +13,7 @@ from jobseeker.scraper.query_builder.filters import FilterRemoteModality, Filter
 from jobseeker.database.models import JobQuery as JobQueryDBModel
 from jobseeker.scraper.datatypes import JobQuery
 from jobseeker.logger import Logger
-from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database import DatabaseManager
 
 
 

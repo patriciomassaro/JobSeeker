@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from jobseeker.scraper.datatypes  import JobPosting  as JobPosting
 from jobseeker.database.models import JobPosting as JobPostingDBModel
 from jobseeker.logger import Logger
-from jobseeker.database.database_manager import DatabaseManager 
+from jobseeker.database import DatabaseManager 
 
 
 

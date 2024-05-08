@@ -1,47 +1,86 @@
-import json
 import os
 from langchain.prompts import PromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 from langchain_community.callbacks import get_openai_callback
+import random
 
-
-from jobseeker.llm import LLMInitializer, ModelNames
+from jobseeker.llm import ModelNames
 from jobseeker.llm.base_builder import BaseBuilder
 from jobseeker.logger import Logger
+from jobseeker.database.models import UserJobComparison, WorkExperienceParagraphs, Users,WorkExperienceParagraphsExamples
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class WorkExperience(BaseModel):
+    title: str = Field( description="Title of the position held.")
+    company_name: str = Field( description="Name of the company where the position was held.")
+    start_year: str = Field( description="Start date of the employment in YYYY-MM format.")
+    end_year: Optional[str] = Field(None, description="End date of the employment in YYYY-MM format, if applicable.")
+    accomplishments: List[str] = Field( description="List of achievements or responsibilities in the position.")
+
+class WorkExperiences(BaseModel):
+    work_experiences: List[WorkExperience] = Field( description="List of work experiences.")
+
+WORK_EXPERIENCE_LATEX_TEMPLATE = """
+    \cventry{{{START_DATE}-{END_DATE}}}
+        {{{TITLE}}}
+        {{{COMPANY}}}
+        {{}}
+        {{}}
+        {{{ACCOMPLISHMENTS}}}
+"""
+
+EDUCATION_LATEX_TEMPLATE = """
+    \cventry{{{START_DATE}-{END_DATE}}}
+        {{{DEGREE}}}
+        {{{INSTITUTION}}}
+        {{}}
+        {{}}
+        {{{ACCOMPLISHMENTS}}}
+"""
+
+LANGUAGE_LATEX_TEMPLATE = """
+    \cvline{{{LANGUAGE}}}{{{PROFICIENCY}}}
+    """
+
+SKILLS_LATEX_TEMPLATE = """
+    \section{{Skills}}
+    \cvline{{}}{{{SKILLS}}}
+    """
 
 CV_PROMPT_TEMPLATE ='''
 {{
     "context": {{
         "role": "career advising expert",
         "action": "tailor the resume to the job description",
-        "objective": "Assist the client in customizing their resume to align with a specific job description by emphasizing pertinent qualifications and incorporating appropriate technologies and skills from the job description.",
+        "objective": "Assist the client in customizing their work experiences to align with a specific job description. Incorporate words that an applicant tracking system would use to filter candidates for the job",
         "inputs": {{
             "job_posting_data": "{job_posting_data}",
-            "applicant_cv": "{applicant_cv}",
-            "requirement_qualification_comparison": "{requirement_qualification_comparison}",
-            "resume_template": "{cv_template}"
+            "candidate_work_experience": "{parsed_work_experience}",
+            "candidate_skills": "{parsed_skills}",
         }},
+        "examples": {{
+            "format": "You will see how you answered in the past, and how the user corrected it, use it to guide your answers.",
+            "examples": {examples}
+        }}
     }},
     "instructions": {{
-        "output": "Produce a tailored resume in TeX format, keeping the structure of the input resume",
-        "format_requirements": "Ensure all special characters are properly escaped in the TeX file, e.g., use '\\' for special characters like '%'.",
-        "comparisons": "You can use the requirement_qualification_comparison input to build the resume, but you are not obliged to use it. Leverage on the job_posting_data input to build the resume too.",
+        "format_requirements": "Follow these instructions closely: {format_requirements}",
         "content_guidelines": {{
-            "job_titles": "You may change the job titles, but don't lie. An example: change 'ML engineer' to 'Data Scientist'.",
-            "industries": "Retain truthfulness about industries; emphasize relevant skills and technologies.",
-            "business_applications": "Do not lie about the business applications, if the candidate never worked in payments, don't say they did.",
-            "sentence_style": "Construct sentences that are action-oriented: 'I performed X, resulting in Y in the context of Z.'",
-            "language": "Avoid adjectives and adverbs; focus on verifiable achievements.",
-            "modification_rules": "Do not remove any items; instead, rephrase them for relevance and impact.",
-            "redundancy": "Avoid redundancy; ensure each part of the resume contributes uniquely to the overall narrative.",
+            "titles": "Adapting the job titles is very important for getting interviews",
+            "sentence_style": "Follow the STAR method: Situation, Task, Action, Result.",
+            "language": "Do not use adjectives and adverbs",
+            "Specificity": "Prioritize relevance to the specific job over general achievements."
         }}
     }},
     "restrictions": {{
-        "number of items": "Mention all of the provided accomplishments by the candidate in the resume. If they are not relevant, keep them as they are.",
-        "experiences": "ALL EXPERIENCES from the profile MUST BE INCLUDED IN THE RESUME. Do not delete any work experience",
+        "experiences": "Do not delete any work experience",
         "verb_tense": "keep the verb tense consistent throughout the resume.",
-        "template": "Use the provided resume template as a base for the new resume."
+        "prohibited_words": "DO NOT use the words: Spearhead,Pioneer, advanced"
+        "accomplishments": "Each accomplishment should have no more than 35 words"
     }}
 }}
 '''
@@ -51,18 +90,19 @@ CV_PROMPT_TEMPLATE ='''
 #     "context": {{
 #         "role": "career advising expert",
 #         "action": "tailor the resume to the job description",
-#         "objective": "Assist the client in customizing their resume to align with a specific job description by emphasizing pertinent qualifications and incorporating appropriate technologies and skills from the job description.",
+#         "objective": "Assist the client in customizing their work experiences to align with a specific job description by emphasizing pertinent qualifications and incorporating appropriate technologies and skills.",
 #         "inputs": {{
 #             "job_posting_data": "{job_posting_data}",
+#             "candidate_work_experience": "{parsed_work_experience}",
+#             "candidate_skills": "{parsed_skills}",
 #             "requirement_qualification_comparison": "{requirement_qualification_comparison}",
-#             "resume": "{cv_tex}"
 #         }},
 #     }},
 #     "instructions": {{
-#         "output": "Produce a tailored resume in TeX format, keeping the structure of the input resume",
-#         "format_requirements": "Ensure all special characters are properly escaped in the TeX file, e.g., use '\\' for special characters like '%'.",
+#         "format_requirements": "Follow these instructions closely: {format_requirements}",
+#         "comparisons": "You can use the requirement_qualification_comparison input to build the work experiences, but you are not obliged to use it.",
 #         "content_guidelines": {{
-#             "job_titles": "You may change the job titles, but don't lie. An example: change 'ML engineer' to 'Data Scientist'.",
+#             "titles": "You may change the job titles, but don't lie. An example: change 'ML engineer' to 'Data Scientist'.",
 #             "industries": "Retain truthfulness about industries; emphasize relevant skills and technologies.",
 #             "business_applications": "Do not lie about the business applications, if the candidate never worked in payments, don't say they did.",
 #             "sentence_style": "Construct sentences that are action-oriented: 'I performed X, resulting in Y in the context of Z.'",
@@ -72,56 +112,12 @@ CV_PROMPT_TEMPLATE ='''
 #         }}
 #     }},
 #     "restrictions": {{
-#         "quality_assurance": "The resume must reflect high-quality customization that aligns with the job description, demonstrating the candidate’s suitability for the role with no content repetition.",
-#         "achievements": "Each resume entry should be linked to tangible outcomes or newly framed achievements tailored to the job posting.",
-#         "work_experience": "Do not delete any work experience; instead, rephrase it to align with the job description.",
-#         "number of items": "the resume should have the exact number of items as the input resume.",
+#         "experiences": "ALL EXPERIENCES from the profile MUST BE INCLUDED. Do not delete any work experience",
 #         "verb_tense": "keep the verb tense consistent throughout the resume.",
+#         "prohibited_words": "DO NOT use the words: Spearhead,
 #     }}
 # }}
 # '''
-
-# CV_PROMPT_TEMPLATE = """
-
-#         You are a seasoned career advising expert in crafting resumes and cover letters.
-#         I will provide you with a job description, a resume data in tex format and a comparison of the job description requirements and the resume qualifications that another expert did.
-#         Your objective is to tailor the resume to the job description, highligting the most relevant qualifications and using the technologies and skill names that the job description uses.
-
-
-#         Follow these instructions to tailor the resume to the job description:
-
-#         - Your output is a tex file and only a tex file, remember to check for escape characters.
-#         - Don't forget to add \\ when using special characters like %.
-#         - It must be short
-#         - You may change the job titles (Example: change ML engineer to Data Scientist), but don't lie about the roles.
-#         - do not lie about the industries where the candidate has worked, focus on the skills and technologies.
-#         - Sentences should be action-oriented: I did X in the context of Y and achieved Z
-#           Example: Created first integration playbook resulting in successful API integrations with major client, leading to 5M increase in yearly revenue
-#         - Do not delete any of the items, just change the words
-#         - Do not add jargon, buzzwords
-
-
-
-
-#         This is the .tex file that represents the CV
-
-#         ------
-#         {cv_tex}
-#         ------
-
-#         This is all the information that the client gathered about the job posting:
-#         ------
-#         {job_posting_data}
-#         ------
-
-#         A colleague of yours has compared the job posting requirements with the resume qualifications, here is the comparison:
-
-#         ------
-#         {requirement_qualification_comparison}
-#         ------        
-#     """
-
-
 
 class CVBuilder(BaseBuilder):
     def __init__(self,
@@ -131,12 +127,40 @@ class CVBuilder(BaseBuilder):
                  log_file_name="llm.log",
                  log_prefix="CVBuilder",
                  ):
+        
         super().__init__(model_name=model_name,
                          user_id=user_id,
                          temperature=temperature,
                          log_file_name=log_file_name,
                          log_prefix=log_prefix)
+        self.examples= self._get_examples_from_db()
+        self.output_parser = JsonOutputParser(pydantic_object=WorkExperiences)
         self._create_chain()
+        
+        
+    def _get_examples_from_db(self):
+        examples_list= []
+        with self.db as session:
+            comparison_ids = session.query(UserJobComparison.id).filter_by(user_id=self.user_id).all()
+            comparison_ids = [x[0] for x in comparison_ids]
+
+            examples = session.query(WorkExperienceParagraphsExamples).filter(
+                WorkExperienceParagraphsExamples.comparison_id.in_(comparison_ids)
+            ).all()
+                
+            examples=random.sample(examples,min(10,len(examples)))
+        
+        for example in examples:
+            examples_list.append(
+                {
+                    "original_title": example.original_title,
+                    "edited_title": example.edited_title,
+                    "original_accomplishments": example.original_accomplishments,
+                    "edited_accomplishments": example.edited_accomplishments
+                }
+            )
+        return examples_list
+            
         
     def _load_latex_to_string(self)->str:
         with open(os.path.join(ROOT_DIR, "media", f"{self.user_id}", "CV.tex"), "r") as file:
@@ -149,10 +173,14 @@ class CVBuilder(BaseBuilder):
     def _create_chain(self):
         self.template = PromptTemplate(
             template=CV_PROMPT_TEMPLATE,
-            input_variables=["job_posting_data", "requirement_qualification_comparison"],
+            input_variables=["job_posting_data",
+                            #  "requirement_qualification_comparison"
+                             ],
             partial_variables={
-                "applicant_cv": self._get_user_summary(),
-                "cv_template": self._load_template_to_string()
+                "parsed_work_experience": self._get_user_attribute("parsed_work_experiences"),
+                "parsed_skills": self._get_user_attribute("parsed_skills"),
+                "format_requirements": self.output_parser.get_format_instructions(),
+                "examples": self.examples
             }
         )
         self.chain = self.template | self.llm | self.output_parser
@@ -160,16 +188,157 @@ class CVBuilder(BaseBuilder):
     def _run_chain(self,job_id:int):
         with get_openai_callback() as cb:
             result = self.chain.invoke({"job_posting_data":self._get_job_summary(job_id=job_id),
-                                        "requirement_qualification_comparison":self._get_comparison_summary(job_id=job_id)})
+                                        # "requirement_qualification_comparison":self._get_comparison_summary(job_id=job_id)
+                                        }
+                                    )
             self.logger.info(f"Built CV for user {self.user_id} and {job_id} \n {cb}")
             return result
+        
+    def _save_cv_to_database(self, job_id:int, pdf_bytes:bytes, tex_string:str):
+        with self.db as session:
+            comparison = session.query(UserJobComparison).filter_by(job_posting_id=job_id, user_id=self.user_id).first()
+            if comparison:
+                comparison.cv_pdf = pdf_bytes
+                comparison.cv_tex = tex_string
+                session.commit()
+            else:
+                self.logger.error("Comparison not found in database.")
 
-    def _build(self,job_id:int):
+    def _save_work_experiences_to_database(self, job_id:int, custom_work_experiences:List[WorkExperience]):
+        with self.db as session:
+            comparison = session.query(UserJobComparison).filter_by(job_posting_id=job_id, user_id=self.user_id).first()
+            if not comparison:
+                # create the comparison
+                comparison = UserJobComparison(job_posting_id=job_id, user_id=self.user_id, comparison={})
+                session.add(comparison)
+
+            session.query(WorkExperienceParagraphs).filter_by(comparison_id=comparison.id).delete()
+            for work_experience in custom_work_experiences:
+                work_experience_paragraph = WorkExperienceParagraphs(comparison_id=comparison.id,
+                                                                        start_year=work_experience.get("start_year",""),
+                                                                        end_year=work_experience.get("end_year",""),
+                                                                        company=work_experience.get("company_name",""),
+                                                                        title=work_experience.get("title",""),
+                                                                        accomplishments=work_experience.get("accomplishments",[])
+                                                                        )
+                session.add(work_experience_paragraph)
+            session.commit()
+
+    def _load_personal_data_to_cv(self, template:str)->str:
+        with self.db as session:
+            personal_data = session.query(Users).filter_by(id=self.user_id).first().parsed_personal
+            if personal_data:
+                template = template.replace("FIRSTNAME", personal_data.get("first_name",""))
+                template = template.replace("LASTNAME", personal_data.get("last_name",""))
+                template = template.replace("MAIL", personal_data.get("email",""))
+                template = template.replace("PHONE", personal_data.get("contact_number",""))
+                template = template.replace("LOCATION", personal_data.get("location",""))
+            else:
+                self.logger.error("User not found in database.")
+        return template
+    
+    def _add_education_to_cv(self, template:str)->str:
+        with self.db as session:
+            education_string = "\\section{Education}"
+            education_data = session.query(Users).filter_by(id=self.user_id).first().parsed_educations
+            if education_data:
+                # sort by start date desc
+                education_data = sorted(education_data, key=lambda x: x.get('start_date',''), reverse=True)
+                for education in education_data:
+                    if education.get('accomplishments',None):
+                        accomplishments_string = "\\begin{itemize} FILL \\end{itemize}" 
+                        accomplishment_items = ""
+                        for accomplishment in education.get('accomplishments',[]):
+                            accomplishment_items += f"\\item {self._escape_latex(accomplishment)} \n"
+                        accomplishments_string = accomplishments_string.replace("FILL",accomplishment_items)
+                    else:
+                        accomplishments_string = ""
+
+                    education_string += EDUCATION_LATEX_TEMPLATE.format(
+                        START_DATE=education.get('start_date',''),
+                        END_DATE=education.get('end_date',''),
+                        DEGREE=education.get('degree',''),
+                        INSTITUTION=education.get('institution',''),
+                        ACCOMPLISHMENTS=accomplishments_string
+                    ).replace("-None","")
+            return template.replace("EDUCATIONS", education_string)
+
+    def _add_work_experiences_to_cv(self, template:str, comparison_id:int)->str:
+        with self.db as session:
+            work_experiences = session.query(WorkExperienceParagraphs).filter_by(comparison_id=comparison_id).order_by(WorkExperienceParagraphs.end_year.desc(), WorkExperienceParagraphs.start_year.asc()).all()
+            if work_experiences:
+                work_experience_string = "\\section{Work Experience}"
+                for work_experience in work_experiences:
+                    if work_experience.accomplishments:
+                        accomplishments_string = "\\begin{itemize} FILL \\end{itemize}"
+                        accomplishment_items = ""
+                        for accomplishment in work_experience.accomplishments:
+                            accomplishment_items += f"\\item {self._escape_latex(accomplishment)} \n"
+                        accomplishments_string = accomplishments_string.replace("FILL",accomplishment_items)
+                    else:
+                        accomplishments_string = ""
+                    work_experience_string += WORK_EXPERIENCE_LATEX_TEMPLATE.format(
+                        START_DATE=work_experience.start_year,
+                        END_DATE=work_experience.end_year,
+                        TITLE=work_experience.title,
+                        COMPANY=work_experience.company,
+                        ACCOMPLISHMENTS=accomplishments_string
+                    )
+            else:
+                work_experience_string = ""
+            return template.replace("WORKEXPERIENCES", work_experience_string)
+
+                
+        
+
+    def _add_languages_to_cv(self, template:str)->str:
+        with self.db as session:
+            language_string = "\section{Languages}"
+            language_data = session.query(Users).filter_by(id=self.user_id).first().parsed_languages
+            if language_data:
+                for language in language_data:
+                    language_string += LANGUAGE_LATEX_TEMPLATE.format(
+                        LANGUAGE=language.get('language',''),
+                        PROFICIENCY=language.get('proficiency','')
+                    )
+        return template.replace("LANGUAGES", language_string)
+    
+    def _add_skills_to_cv(self, template:str)->str:
+        with self.db as session:
+            skills_string = ""
+            skills_data = session.query(Users).filter_by(id=self.user_id).first().parsed_skills
+            if skills_data:
+                skills_string = SKILLS_LATEX_TEMPLATE.format(SKILLS=", ".join(skills_data))
+        return template.replace("SKILLS", skills_string)
+
+
+    def _generate_tailored_cv(self,job_id:int):
+        # get the comparison
+        with self.db as session:
+            comparison = session.query(UserJobComparison).filter_by(job_posting_id=job_id, user_id=self.user_id).first()
+            if comparison:
+                latex = self._load_template_to_string()
+                latex = self._load_personal_data_to_cv(template=latex)
+                latex = self._add_work_experiences_to_cv(latex,comparison_id=comparison.id)
+                latex = self._add_education_to_cv(latex)
+                latex = self._add_languages_to_cv(latex)
+                latex = self._add_skills_to_cv(latex)
+                return latex
+            else:
+                self.logger.error("Comparison not found in database.")
+
+    def _build(self,job_id:int, use_llm=True):
         self.logger.info(f"Building CV for user {self.user_id}" and f"Job {job_id}")
-        custom_cv_latex = self._run_chain(job_id=job_id)
-        custom_cv_latex = self._clean_latex_code_header(custom_cv_latex)
-        self._create_pdf_from_latex(latex_string=custom_cv_latex,
-                                       path=os.path.join(ROOT_DIR, "media", f"{self.user_id}", f"{self._get_job_company_and_position(job_id)}_CV"))
+        if use_llm:
+            custom_work_experiences = self._run_chain(job_id=job_id)
+            custom_work_experiences = custom_work_experiences['work_experiences']
+            self._save_work_experiences_to_database(job_id=job_id, custom_work_experiences=custom_work_experiences)
+        custom_cv_latex= self._generate_tailored_cv(job_id=job_id)
+
+
+        pdf_bytes=self._create_pdf_from_latex(latex_string=custom_cv_latex,
+                                              path=os.path.join(ROOT_DIR, "media", f"{self.user_id}", f"{self._get_job_company_and_position(job_id)}_CV"))
+        self._save_cv_to_database(job_id=job_id, pdf_bytes=pdf_bytes, tex_string=custom_cv_latex)
         self._cleanup_build_directory(os.path.join(ROOT_DIR, "media", f"{self.user_id}"))
             
 if __name__ == "__main__":

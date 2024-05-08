@@ -17,16 +17,16 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 class ModelNames(Enum):
-    GPT3_TURBO = "gpt-3.5-turbo-0125"
     GPT4_TURBO = "gpt-4-turbo-2024-04-09"
+    GPT3_TURBO = "gpt-3.5-turbo-0125"
 
 class LLMInitializer:
     def __init__(self,
-                 model_name:ModelNames,
+                 model_name:str,
                  temperature:float = 0.3,
                  api_key:str = OPENAI_API_KEY):
         self.api_key = api_key
-        self.model_name = model_name.value
+        self.model_name = model_name
         if temperature < 0.0 or temperature > 1.0:
             raise ValueError("Temperature must be between 0.0 and 1.0")
         self.temperature = temperature

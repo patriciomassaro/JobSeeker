@@ -12,14 +12,14 @@ warnings.filterwarnings("ignore", category=PydanticJsonSchemaWarning)
 
 
 from jobseeker.llm import LLMInitializer, ModelNames
-from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database import DatabaseManager
 
 
 CV_DATA_EXTRACTOR_SYSTEM_PROMPT_TEXT = "You are an expert extraction algorithm. Only extract relevant information from the text. If you do not know the value of an attribute asked to extract, return null for the attribute's value. \n {format_instructions} \n {input}"
 
 class BaseLLMExtractor:
     def __init__(self,
-                 model_name:ModelNames,
+                 model_name:str,
                  pydantic_object:BaseModel,
                  temperature:float = 0,
                  log_file_name="llm.log",

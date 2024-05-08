@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Edit Paragraph{% endblock %}
+
+{% block content %}
+<h3>Job Summary</h3>
+<div class="limited-width">
+    <pre>{{ comparison.job_posting_summary | tojson(indent=4) }}</pre>
+</div>
+
+<h3>Work Experience</h3>
+<p>Years: {{ work_experience.start_year }} - {{ work_experience.end_year }}</p>
+<p>Company: {{ work_experience.company }}</p>
+
+<form method="POST">
+    <label for="title">Work Experience title:</label>
+    <textarea id="title" name="title" rows="5" cols="40">{{ work_experience.title }}</textarea>      
+    {% set index = 0 %}
+    {% for accomplishment in work_experience.accomplishments %}
+        <div>
+            <label for="accomplishment{{ index }}" class="accomplishment-label">Accomplishment {{ index + 1 }}</label>
+            <textarea id="accomplishment{{ index }}" name="accomplishments" rows="5" cols="40">{{ accomplishment }}</textarea>        
+        </div>
+        {% set index = index + 1 %}
+    {% endfor %}
+    <div id="new-accomplishments"></div>
+    <button type="button" onclick="addInput()">Add More</button>
+    <input type="submit" value="Save">
+</form>
+
+<script>
+    function addInput() {
+        const index = document.querySelectorAll("textarea[name='accomplishments']").length;
+        const container = document.createElement('div');
+        const label = document.createElement('label');
+        label.setAttribute('for', 'accomplishment' + index);
+        label.textContent = 'Accomplishment ' + (index + 1);
+
+        const textarea = document.createElement('textarea');
+        textarea.id = 'accomplishment' + index;
+        textarea.name = 'accomplishments';
+        textarea.rows = 5;
+        textarea.cols = 40;
+
+        container.appendChild(label);
+        container.appendChild(textarea);
+        document.getElementById('new-accomplishments').appendChild(container);
+    }
+</script>
+{% endblock %}

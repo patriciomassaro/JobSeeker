@@ -1,3 +1,3 @@
-from jobseeker.database.database_manager import DatabaseManager
+from jobseeker.database import  DatabaseManager
 
 DatabaseManager().recreate_tables()
