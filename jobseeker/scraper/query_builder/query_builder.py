@@ -1,21 +1,8 @@
-from bs4 import BeautifulSoup
-from bs4.element import Tag,ResultSet
-import random
-import pandas as pd
-import time
-import re
-import requests
-
-from typing import List
-
-
 from jobseeker.scraper.query_builder.filters import FilterRemoteModality, FilterSalaryRange, FilterTime, FilterExperienceLevel,build_company_search_url
 from jobseeker.database.models import JobQuery as JobQueryDBModel
 from jobseeker.scraper.datatypes import JobQuery
 from jobseeker.logger import Logger
 from jobseeker.database import DatabaseManager
-
-
 
 
 def parse_input(query_parameter:str,
@@ -72,7 +59,7 @@ class QueryBuilder:
         return self
 
     @staticmethod
-    def format_input(query_parameter: str, input_str: str):
+    def format_input(query_parameter: str, input_str: str)-> str:
         input_str = input_str.strip().lower().replace(" ", "%20").replace(",", "%2C")
         return f"{query_parameter}={input_str}" if input_str else ""
 

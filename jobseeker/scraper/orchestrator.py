@@ -15,8 +15,7 @@ from jobseeker.database.models import JobQueryResult,JobQuery,JobPosting
 
 class MainOrchestrator:
     """
-    Main orchestrator class that will handle the scraping of job postings, writing them to the database, and adding the job query results to the database.
-    Additionally, it will scrape the related companies by their url
+    Main orchestrator class that will handle obtaining the job postings, writing them to the database, and adding the job query results to the database.
     """
 
     def __init__(self,

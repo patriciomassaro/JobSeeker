@@ -248,14 +248,3 @@ class JobPostingDataExtractor:
                 self.logger.info(f"{job_posting.id} - Adding to database")
                 database.upsert_object(job_posting_db,['id'])
 
-
-if __name__ == "__main__":
-    job_ids = [3842512500,3885598758,3820465141,3847787255,3871524017]
-    start = time.time()
-    extractor = JobPostingDataExtractor()
-    job_postings = extractor.extract_job_postings(job_ids, max_workers=5)
-    end = time.time()
-    print(f"Time taken: {end - start} seconds, got {len(job_postings)} job postings")
-
-    extractor.write_job_postings_to_database(job_postings)
-

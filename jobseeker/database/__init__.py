@@ -1,6 +1,7 @@
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import event
 from jobseeker.database.models import Base, CompanySize,FilterTime,FilterSalaryRange,FilterExperienceLevel,FilterRemoteModality,Users
 from jobseeker.scraper.datatypes import CompanySize as CompanySizeEnum
 from jobseeker.logger import Logger
@@ -8,20 +9,17 @@ from jobseeker.scraper.query_builder.filters import FilterTime as FilterTimeEnum
 from jobseeker.scraper.query_builder.filters import FilterSalaryRange as FilterSalaryRangeEnum
 from jobseeker.scraper.query_builder.filters import FilterExperienceLevel as FilterExperienceLevelEnum
 from jobseeker.scraper.query_builder.filters import FilterRemoteModality as FilterRemoteModalityEnum
-from jobseeker.database.models import Institution
-from sqlalchemy import text
-from eralchemy import render_er
+
 DB_TYPE="postgresql+psycopg2"
-USERNAME="pmassaro"
-PASSWORD="pmassaro"
+USERNAME=os.getenv("JOBSEEKER_DB_USERNAME")
+PASSWORD=os.getenv("JOBSEEKER_DB_PASSWORD")
 HOST="localhost"
 PORT="5432"
-DB_NAME="jobseeker"
+DB_NAME=os.getenv("JOBSEEKER_DB_NAME")
 
 
 class DatabaseManager:
     def __init__(self):
-        session = sessionmaker()
         self.url = self.create_url_from_parameters(DB_TYPE, USERNAME, PASSWORD, HOST, PORT, DB_NAME)
         self.engine = create_engine(self.url)
         self.Session = sessionmaker(bind=self.engine)

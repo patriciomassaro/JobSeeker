@@ -6,9 +6,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: pmassaro
-      POSTGRES_PASSWORD: pmassaro  # Use an environment variable
-      POSTGRES_DB: jobseeker
+      POSTGRES_USER: ${JOBSEEKER_DB_USERNAME}
+      POSTGRES_PASSWORD: ${JOBSEEKER_DB_PASSWORD} # Use an environment variable
+      POSTGRES_DB: ${JOBSEEKER_DB_NAME}
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
     networks:

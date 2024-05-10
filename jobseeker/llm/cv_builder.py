@@ -84,41 +84,6 @@ CV_PROMPT_TEMPLATE ='''
     }}
 }}
 '''
-
-# CV_PROMPT_TEMPLATE ='''
-# {{
-#     "context": {{
-#         "role": "career advising expert",
-#         "action": "tailor the resume to the job description",
-#         "objective": "Assist the client in customizing their work experiences to align with a specific job description by emphasizing pertinent qualifications and incorporating appropriate technologies and skills.",
-#         "inputs": {{
-#             "job_posting_data": "{job_posting_data}",
-#             "candidate_work_experience": "{parsed_work_experience}",
-#             "candidate_skills": "{parsed_skills}",
-#             "requirement_qualification_comparison": "{requirement_qualification_comparison}",
-#         }},
-#     }},
-#     "instructions": {{
-#         "format_requirements": "Follow these instructions closely: {format_requirements}",
-#         "comparisons": "You can use the requirement_qualification_comparison input to build the work experiences, but you are not obliged to use it.",
-#         "content_guidelines": {{
-#             "titles": "You may change the job titles, but don't lie. An example: change 'ML engineer' to 'Data Scientist'.",
-#             "industries": "Retain truthfulness about industries; emphasize relevant skills and technologies.",
-#             "business_applications": "Do not lie about the business applications, if the candidate never worked in payments, don't say they did.",
-#             "sentence_style": "Construct sentences that are action-oriented: 'I performed X, resulting in Y in the context of Z.'",
-#             "language": "Avoid adjectives and adverbs; focus on verifiable achievements.",
-#             "modification_rules": "Do not remove any items; instead, rephrase them for relevance and impact.",
-#             "redundancy": "Avoid redundancy; ensure each part of the resume contributes uniquely to the overall narrative.",
-#         }}
-#     }},
-#     "restrictions": {{
-#         "experiences": "ALL EXPERIENCES from the profile MUST BE INCLUDED. Do not delete any work experience",
-#         "verb_tense": "keep the verb tense consistent throughout the resume.",
-#         "prohibited_words": "DO NOT use the words: Spearhead,
-#     }}
-# }}
-# '''
-
 class CVBuilder(BaseBuilder):
     def __init__(self,
                  model_name:ModelNames,

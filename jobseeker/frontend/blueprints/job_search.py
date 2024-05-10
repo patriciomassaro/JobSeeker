@@ -86,6 +86,7 @@ def generate_cv(job_id):
         builder.build(job_ids=[job_id], use_llm=use_llm)
         flash('Generated CV successfully.', 'success')
     except Exception as e:  
+        print(e)
         flash(f'An error occurred: {e}', 'error')
     return redirect(url_for('job_search.index'))
 

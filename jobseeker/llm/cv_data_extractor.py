@@ -36,7 +36,7 @@ class WorkExperience(BaseModel):
     company_name: str = Field( description="Name of the company where the position was held.")
     start_date: str = Field( description="Start date of the employment in YYYY-MM format.")
     end_date: Optional[str] = Field(None, description="End date of the employment in YYYY-MM format, if applicable.")
-    accomplishments: List[str] = Field( description="List of achievements or responsibilities in the position.")
+    accomplishments: List[str] = Field( description="List of achievements or responsibilities in the position")
 
 class Education(BaseModel):
     degree: str = Field( description="Name of the degree obtained.")
@@ -53,7 +53,7 @@ class CV(BaseModel):
     personal: Personal = Field( description="Profile information of the individual.")
     work_experiences: List[WorkExperience] = Field( description="List of work experiences.")
     educations: List[Education] = Field( description="List of educational qualifications.")
-    skills: List[str] = Field(description="List of any skills described in the CV. Examples include hard-skills like programming languages, or soft-skills like communication, leadership,etc.")
+    skills: List[str] = Field(description="List of any skills described in the CV.")
     languages: Optional[List[Language]] = Field(None, description="List of languages spoken and proficiency levels.")
 
 
