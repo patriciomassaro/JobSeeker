@@ -17,7 +17,7 @@
 
 <div style="display: flex; justify-content: space-between;">
     <!-- Left side for filter selection -->
-    <div style="width: 50%;">
+    <div>
         <form action="{{ url_for('job_scrape.run') }}" method="post">
             <input type="hidden" id="logFilename" name="logFilename">  <!-- Ensure this is inside the form -->
             <label for="keywords">Keywords:</label>
@@ -59,17 +59,6 @@
 
             <input type="submit" value="Run Scraping">
         </form>
-    </div>
-
-    <!-- Right side for logs -->
-    <div style="width: 50%;">
-        <h2>Scraping Logs</h2>
-        <iframe frameborder="0" 
-            style='background: transparent; width: 100%; height: 100%;' 
-            src="{{ url_for('job_scrape.log_stream', filename=log_filename) }}">
-        </iframe>
-            <!-- Logs will be displayed here -->
-        </div>
     </div>
 </div>
 {% endblock %}
