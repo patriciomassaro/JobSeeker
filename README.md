@@ -73,6 +73,7 @@ flask --app app run
 
 ## Roadmap
 
+- Develop a better User Interface :) 
 - Use feedback to fine-tune smaller models.
 - Use embeddings for semantic job search.
 
