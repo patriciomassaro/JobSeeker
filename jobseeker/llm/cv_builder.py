@@ -54,33 +54,33 @@ SKILLS_LATEX_TEMPLATE = """
 CV_PROMPT_TEMPLATE ='''
 {{
     "context": {{
-        "role": "career advising expert",
-        "action": "tailor the resume to the job description",
-        "objective": "Assist the client in customizing their work experiences to align with a specific job description. Incorporate words that an applicant tracking system would use to filter candidates for the job",
-        "inputs": {{
-            "job_posting_data": "{job_posting_data}",
-            "candidate_work_experience": "{parsed_work_experience}",
-            "candidate_skills": "{parsed_skills}",
-        }},
-        "examples": {{
-            "format": "You will see how you answered in the past, and how the user corrected it, use it to guide your answers.",
-            "examples": {examples}
+        "role": "Career Advisor",
+        "task": "Tailor the resume to match a specific job posting",
+        "goal": "Enable the client to highlight relevant experiences and skills using keywords that optimize visibility to applicant tracking systems."
+    }},
+    "inputs": {{
+        "job_posting_data": "{job_posting_data}",
+        "candidate_work_experience": "{parsed_work_experience}",
+        "candidate_skills": "{parsed_skills}",
+    }},
+    "examples": {{
+        "format": "You will see how you answered in the past, and how the user corrected it. Use these examples to guide your edits but do not copy them directly.",
+        "examples": {examples}
+    }}
+    "guidelines": {{
+        "format": "Adhere to these formatting rules: {format_requirements}",
+        "content": {{
+            "adapt_titles": "Modify job titles to reflect those in the job posting.",
+            "description_style": "Describe responsibilities and achievements using the STAR method.",
+            "avoid_adjectives": "Exclude adjectives and adverbs in descriptions.",
+            "focus_relevance": "Emphasize skills and experiences directly relevant to the job."
         }}
     }},
-    "instructions": {{
-        "format_requirements": "Follow these instructions closely: {format_requirements}",
-        "content_guidelines": {{
-            "titles": "Adapting the job titles is very important for getting interviews",
-            "sentence_style": "Follow the STAR method: Situation, Task, Action, Result.",
-            "language": "Do not use adjectives and adverbs",
-            "Specificity": "Prioritize relevance to the specific job over general achievements."
-        }}
-    }},
-    "restrictions": {{
-        "experiences": "Do not delete any work experience",
-        "verb_tense": "keep the verb tense consistent throughout the resume.",
-        "prohibited_words": "DO NOT use the words: Spearhead,Pioneer, advanced"
-        "accomplishments": "Each accomplishment should have no more than 35 words"
+    "constraints": {{
+        "experience_inclusion": "Include all work experiences.",
+        "consistent_tense": "Use a consistent verb tense throughout the resume.",
+        "excluded_words": ["Spearhead", "Pioneer", "Advanced"],
+        "max_words_per_achievement": "Limit each achievement to 35 words."
     }}
 }}
 '''

@@ -14,57 +14,42 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 COVER_LETTER_TEMPLATE = '''
     {{
-    "context":{{
-        "role" : "Career advising expert",
-        "action" : "Build a cover letter tailored for the job based on the inputs",
-        "objective" : "Generate a cover letter that will guarantee the candidate an interview by highlighting the most relevant qualifications and achievements",
-        "inputs":{{
-            "job_posting_data":"{job_posting_data}",
-            "candidate_work_experiences":"{parsed_work_experiences}",
-            "candidate_education":"{parsed_educations}",
-            "candidate_skills":"{parsed_skills}",
-            "candidate_languages":"{parsed_languages}",
-            "candidate_personal_info": "{user_additional_info}"
-        }}
-        "examples":"The examples will be provided for each paragraph, and will have bad outputs and their corrections.",
-        "examples_use": "Use the examples as guidance, do not take them literally and DO NOT LIE. The cover letter must be tailored to the job"         
+    "context": {{
+        "role": "Career Advising Expert",
+        "action": "Craft a tailored cover letter",
+        "objective": "Produce a compelling cover letter that enhances the candidate's chance of securing an interview by emphasizing relevant qualifications and achievements.",
+        "examples": "For each paragraph, examples including poor responses and their corrections will be provided. Use these as guidance to tailor the cover letter specifically to the job without misleading content."
     }},
+    "inputs":{{
+        "job_posting_data":"{job_posting_data}",
+        "candidate_work_experiences":"{parsed_work_experiences}",
+        "candidate_education":"{parsed_educations}",
+        "candidate_skills":"{parsed_skills}",
+        "candidate_languages":"{parsed_languages}",
+        "candidate_personal_info": "{user_additional_info}"
+    }}
+    
     "instructions":{{
-        "output": " only 5 paragraphs, according to the format requirements",
-        "format_requirements":{{
+        "cover_letter_sttructure": {{
             "first_paragraph": {{
                 "length": "2 sentences",
-                "content": "Who the candidate is, what he/she wants and what he/she believes in. Include a transition to the second paragraph."
+                "content": "Introduce the candidate's professional intent and connection to the company.",
                 "guidelines": {{
-                    "strengths": "Emphasize strengths and mention something specific about the company if possible.",
-                    "conciseness": "Be concise and clear, prioritize examples and numbers, use less words."
+                    "highlight_strengths": "Emphasize strengths and align with the company's values.",
+                    "conciseness": "Be concise, use examples where possible."
                 }},
                 "examples": "{first_paragraph_examples}"
             }},
             "second_paragraph": {{
-                "content": "Pick the most relevant and impressive matches between the job description and the user resume and write a paragraph.",
+                "content": "Discuss a key qualification that matches the job requirements.",
                 "link": "Link the qualification to any of the themes"
                 "guidelines": {{
                     "themes": [
-                        Leading People,
-                        Taking Initiative,
-                        Affinity for Challenging Work,
-                        Affinity for Different Types of Work,
-                        Dealing with Failure, 
-                        Managing Conflict, 
-                        Driven by Curiosity"
-                    ],    
-                    "qualification": "One qualification can be linked to multiple themes",
-                    "structure": "Use the theme to write a paragraph that links the qualification to the requirement.",
-                    "format": "Theme --> Context --> Action --> Result",
-                    "structure_example": {{
-                        "Theme": "Taking initiative" 
-                        "intro": I like to go above and beyond in whatever I do
-                        "Context": "As one of the youngest data scientists at my startup, I had the opportunity to help investigate fraud analytics within our company's platform"
-                        "Action" : "Instead of just reporting my findings, I created a full company wide document pertaining to our best practices and effective ways to combat fraud after doing a week of extensive research.
-                        "Result": "This helped my team members respond to hundreds of client requests by just referencing the document and also helped completely pivot the company's fraud strategy.",
-                    }}
-                }},
+                        "Leadership", "Initiative", "Challenging Work",
+                        "Versatility", "Resilience", "Conflict Management", "Curiosity"
+                    ],   
+                    "structure": "Theme --> Context --> Action --> Result",
+                }}
                 "examples": "{second_paragraph_examples}"
             }},
             "third_paragraph": {{
@@ -72,11 +57,10 @@ COVER_LETTER_TEMPLATE = '''
                 "examples": "{third_paragraph_examples}"
             }},
             "fourth_paragraph": {{
-                "content": "Pick two favorite aspects about the company from the research. One value driven and one Industry-related. If the candidate uses the product, it should be first on the list.",
-                
+                "content": "Highlight admiration for the company’s values and industry position.",                
                 "guidelines": {{
-                    "personal_info": "Use the personal information provided by the user to make the cover letter more personal.",
-                    "honest": "Be honest about the reasons why the company appeals to the candidate.",
+                    "personal_touch": "Use personal anecdotes or the candidate personal info to match the company’s values or services.",
+                    "honesty": "Ensure the reasons for interest in the company are genuine."
                 }},
                 "structure_examples": [
                     "I’ve been following [COMPANY] for a couple of months now and I align with both the company’s values and its general direction. The [VALUE] really stands out to me because [REASON]."
@@ -84,10 +68,10 @@ COVER_LETTER_TEMPLATE = '''
                 "examples": "{fourth_paragraph_examples}"
             }},
             "fifth_paragraph": {{
-                "content": "Simply state what the candidate wants and why.",
+                "content": "Summarize the candidate's enthusiasm and readiness for the position.",
                 "guidelines": {{
                     "conciseness": "Be concise and clear, prioritize examples and numbers, use less words.",
-                    "structure": "I think you’ll find that my experience is a really good fit for [COMPANY] and specifically this position. I’m ready to take my skills to the next level with your team and look forward to hearing back.",
+                    "closing_statement": "Express anticipation for a response."
                 }},
                 "examples": "{fifth_paragraph_examples}"
             }},
@@ -96,99 +80,17 @@ COVER_LETTER_TEMPLATE = '''
     "restrictions": {{
         "format": "You must provide only 5 paragraphs according to the instructions. Do not add intros like dear hiring manager or thanks or sincerely. Just the 5 paragraphs.",
         "length": "The cover letter must be limited to 250 words.",
-        "action_oriented": "Make sure that the cover letter is action-oriented, focusing on measurable achievements",  
-        "check_for_forbiden_words": "Using any of these words is an instant rejection: 'extensive','seasoned','appeals', 'advanced', 'resonates','spearhead','honed','efficient','ethos','keen'".
-        "adverbs": "Check the letter and remove all adverbs and adjectives. Failing to do so will result in a rejection.",
+        "action_focus": "Highlight measurable achievements and actions.",
+        "forbidden_words": [
+            "extensive", "seasoned", "appeals", "advanced", "resonates",
+            "spearhead", "honed", "efficient", "ethos", "keen"
+        ],
+        "style": "Remove all adverbs and adjectives from the final draft.",
         "name":  "Do not include the name of the candidate in any paragraph."
-        "implicit_connections": "Show that the candidate is a good fit for the job through examples, do not say it explicitly."
+        "implicit_fit": "Demonstrate suitability through examples, not direct statements."
     }}
 }}
     '''
-
-# COVER_LETTER_TEMPLATE = '''
-#     {{
-#     "context":{{
-#         "role" : "Career advising expert",
-#         "action" : "Build a cover letter based on the instructions tailored for the job based on the inputs",
-#         "additional info": "A colleague has already compared the job description requirements with the candidate's qualifications and provided the comparison",
-#         "objective" : "Generate a cover letter that will guarantee the candidate an interview by highlighting the most relevant qualifications and achievements",
-#         "inputs":{{
-#             "job_posting_data":"{job_posting_data}",
-#             "requirement_qualification_comparison":"{requirement_qualification_comparison}",
-#             "candidate_work_experiences":"{parsed_work_experiences}",
-#             "candidate_education":"{parsed_educations}",
-#             "candidate_skills":"{parsed_skills}",
-#             "candidate_languages":"{parsed_languages}",
-#             "candidate_additional_info": "{user_additional_info}"
-#         }}
-#         "examples":"The examples will be provided for each paragraph, and will have bad outputs and their corrections."
-#     }},
-#     "instructions":{{
-#         "output": " only 5 paragraphs, according to the format requirements",
-#         "candidate_additional_info": "Use the additional information provided by the user if it makes sense, it gives a personal touch to the cover letter.",
-#         "format_requirements":{{
-#             "first_paragraph": {{
-#                 "length": "2 sentences",
-#                 "content": "Who the candidate is, what he/she wants and what he/she believes in. Include a transition to the second paragraph."
-#                 "guidelines": {{
-#                     "strengths": "Emphasize strengths and mention something specific about the company if possible.",
-#                     "conciseness": "Be concise and clear, prioritize examples and numbers, use less words."
-#                 }},
-#                 "examples": "{first_paragraph_examples}"
-#             }},
-#             "second_paragraph": {{
-#                 "input": "use the provided requirement_qualification_comparison",
-#                 "content": "Pick the most relevant and impressive matches in the comparison and write a paragraph.",
-#                 "guidelines": {{
-#                     "themes": "Link the qualification to the following themes: Leading People, Taking Initiative, Affinity for Challenging Work, Affinity for Different Types of Work, Affinity for Specific Work, Dealing with Failure, Managing Conflict, Driven by Curiosity",
-#                     "qualification": "One qualification can be linked to multiple themes",
-#                     "structure": "Use the theme to write a paragraph that links the qualification to the requirement.",
-#                     "format": "Theme --> Context --> Action --> Result",
-#                 }},
-#                 "link_qualification_to_theme_examples": [
-#                     "Conducted Feature-mapping and requirements gathering sessions with prospective and existing clients to formulate scope and backlog. Responsible for managing and creating the backlog, writing stories and acceptance criteria for all managed project --> This person likely had to ask a bunch of questions and probe for information --> Theme: Driven by curiosity",
-#                     "Conducted Feature-mapping and requirements gathering sessions with prospective and existing clients to formulate scope and backlog. Responsible for managing and creating the backlog, writing stories and acceptance criteria for all managed project --> This person had to do both technical work and non-technical work --> Affinity for different types of work."
-#                 ],
-#                 "structure_example": "Theme: Taking initiative -->I like to go above and beyond in whatever I do. Context: As one of the youngest data scientists at my startup, I had the opportunity to help investigate fraud analytics within our company's platform. Action? : Instead of just reporting my findings, I created a full company wide document pertaining to our best practices and effective ways to combat fraud after doing a week of extensive research. Result: This helped my team members respond to hundreds of client requests by just referencing the document and also helped completely pivot the company's fraud strategy.",
-#                 "examples": "{second_paragraph_examples}"
-#             }},
-#             "third_paragraph": {{
-#                 "input": "use the provided requirement_qualification_comparison",
-#                 "guidelines": "same as second_paragraph",
-#                 "examples": "{third_paragraph_examples}"
-#             }},
-#             "fourth_paragraph": {{
-#                 "content": "Pick two favorite aspects about the company from the research. One value driven and one Industry-related. If the candidate uses the product, it should be first on the list.",
-#                 "guidelines": {{
-#                     "honest": "Be honest about the reasons why the company appeals to the candidate.",
-#                     "avoid_jargon": "Avoid using jargon or buzzwords, be specific, concise and concrete.",
-#                     "avoid_adjectives": "Avoid adding too many adjectives or adverbs."
-#                 }},
-#                 "structure_examples": [
-#                     "I’ve been following [COMPANY] for a couple of months now and I resonate with both the company’s values and its general direction. The [Insert Value] really stands out to me because [Insert Reason]. I also recently read that [Insert topical reason] and this appeals to me because [Why it appeals to the candidate]."
-#                 ],
-#                 "examples": "{fourth_paragraph_examples}"
-#             }},
-#             "fifth_paragraph": {{
-#                 "content": "Simply state what the candidate wants and why.",
-#                 "guidelines": {{
-#                     "conciseness": "Be concise and clear, prioritize examples and numbers, use less words.",
-#                     "structure": "I think you’ll find that my experience is a really good fit for [COMPANY] and specifically this position. I’m ready to take my skills to the next level with your team and look forward to hearing back.",
-#                 }},
-#                 "examples": "{fifth_paragraph_examples}"
-#             }},
-#             "full_cover_letter_example": "I am a customer focused and creative technical account manager with 2 years of experience interested in learning more about Adyen's implementation team. Over the last two and a half years, I've helped my company generate over $10M in revenue by leading meetings with executive leaders, building a variety of web applications on the side. Now I'm excited to continue my journey by contributing and growing at Adyen. There are three things that make me the perfect fit for this position: First, I've always been curious about understanding how things work and the technology sector. As an Account manager at a machine learning startup, I wanted to push myself and understand the technical elements of my day to day. I enrolled in an online Software engineering program on the side and 2 years later, I've build multiple full stack web applications that interact with web APIs like twitter and clearbit. These technical skills that I've built up have helped me become the go-to person on my team to help debug technical issues. Second, I have plenty of experience leading meetings with high level exectuvites. I've managed delicate situations pertaining to data privacy sharing, successfully upsold additional revenue streams on the back of data analysis, and run quarterly business reviews where I've had to think quickly on my feet. As the company scaled from 50 to 250 employees, I've also taken on increased responsibility including the mentoring of junior team members. Finally, I'm excited about Adyen's vision and core values. As a global citizen that lived in 3 continents, I recognize the importance of diversity towards innovation and want to work at a company that embodies this. Having worked with multiple clients in the Fintech space over the past year, I've also become interested in payments and the opportunity to help some of the fastest growing companies in the world continue to scale. I think you will find that my experience is a good fit for Adyen and specifically this position. I'm ready to take my skills to the next level with your team and look forward to hearing back.",
-#         }},
-#     }},
-#     "restrictions": {{
-#         "format": "You must provide only 5 paragraphs according to the instructions. Do not add intros like dear hiring manager or thanks or sincerely. Just the 5 paragraphs.",
-#         "length": "The cover letter must be limited to 350 words.",
-#         "things_to_avoid": "Do not use words like 'extensive','seasoned', 'advanced', 'resonate'. Do not include the name of the candidate in any paragraph."
-#         "explicit_connections": "Do not make the connection between the qualifications and the requirements explicit. For example, this is wrong: 'aligning perfectly with your requirement for someone who can enhance user signals and build quality lead-scoring models' "
-
-#     }}
-# }}
-#     '''
 
 class CoverLetterBuilder(BaseBuilder):
     def __init__(self,

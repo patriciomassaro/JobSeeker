@@ -2,13 +2,13 @@ from enum import Enum
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-from typing import List
 
 import os
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 class ModelNames(Enum):
+    GPT4_O= "gpt-4o"
     GPT4_TURBO = "gpt-4-turbo-2024-04-09"
     GPT3_TURBO = "gpt-3.5-turbo-0125"
     LLAMA70 = "llama3-70b-8192"
@@ -26,7 +26,7 @@ class LLMInitializer:
 
     def initialize_model(self):
         if "gpt" in self.model_name:
-            if OPENAI_API_KEY and (self.model_name== "gpt-3.5-turbo-0125" or self.model_name== "gpt-4-turbo-2024-04-09"):
+            if OPENAI_API_KEY and (self.model_name== "gpt-3.5-turbo-0125" or self.model_name== "gpt-4-turbo-2024-04-09" or self.model_name== "gpt-4o"):
                 self.llm = ChatOpenAI(model_name=self.model_name, api_key=OPENAI_API_KEY, temperature=self.temperature)
         elif GROQ_API_KEY and (self.model_name=="llama3-70b-8192" or self.model_name=="llama3-8b-8192"):
             self.llm = ChatGroq(api_key=GROQ_API_KEY,model_name=self.model_name,temperature=self.temperature)
