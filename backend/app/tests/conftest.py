@@ -2,14 +2,13 @@ from collections.abc import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from sqlmodel import Session, select
+from sqlalchemy import func
 
-from app.core.config import settings
 from app.core.db import engine, init_db
 from app.main import app
-from app.models import Item, User
-from app.tests.utils.user import authentication_token_from_email
-from app.tests.utils.utils import get_superuser_token_headers
+from app.tests.utils.utils import get_user_token_headers
+from app.models import Users
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -17,10 +16,12 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        statement = delete(Item)
-        session.execute(statement)
-        statement = delete(User)
-        session.execute(statement)
+        # delete all users that were created during the tests ( they have a pytest email)
+        test_users = session.exec(
+            select(Users).where(func.like(Users.username, "pytest"))
+        ).all()
+        for test_user in test_users:
+            session.delete(test_user)
         session.commit()
 
 
@@ -31,12 +32,5 @@ def client() -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture(scope="module")
-def superuser_token_headers(client: TestClient) -> dict[str, str]:
-    return get_superuser_token_headers(client)
-
-
-@pytest.fixture(scope="module")
-def normal_user_token_headers(client: TestClient, db: Session) -> dict[str, str]:
-    return authentication_token_from_email(
-        client=client, email=settings.EMAIL_TEST_USER, db=db
-    )
+def user_token_headers(client: TestClient) -> dict[str, str]:
+    return get_user_token_headers(client)

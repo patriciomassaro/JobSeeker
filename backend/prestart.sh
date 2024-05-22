@@ -3,7 +3,7 @@
 # Let the DB start
 python /app/app/backend_pre_start.py
 
-alembic revision --autogenerate -m "Initial migration"
+# alembic revision --autogenerate -m "Initial migration"
 # Run migrations
 alembic upgrade head
 

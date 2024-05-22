@@ -1,12 +1,13 @@
 from app.models import (
-    FilterTimeEnum,
-    FilterSalaryRangesEnum,
+    TimeFiltersEnum,
+    SalaryRangeFiltersEnum,
     RemoteModalitiesEnum,
     ExperienceLevelsEnum,
     JobPostingQueries,
 )
 from app.logger import Logger
-from app.api.deps import get_db
+from app.core.db import engine
+from sqlmodel import Session
 
 
 def parse_input(
@@ -44,7 +45,7 @@ class QueryBuilder:
             self.company_id = None
         return self
 
-    def add_salary_range(self, salary_range: FilterSalaryRangesEnum):
+    def add_salary_range(self, salary_range: SalaryRangeFiltersEnum):
         self.params.append(
             salary_range.get_query_param(salary_range.value, "f_SB2=")
             if salary_range is not None
@@ -53,7 +54,7 @@ class QueryBuilder:
         self.salary_range = salary_range.value
         return self
 
-    def add_time_filter(self, time_filter: FilterTimeEnum):
+    def add_time_filter(self, time_filter: TimeFiltersEnum):
         self.params.append(time_filter.get_query_param(time_filter.value, "f_TPR=r"))
         self.time_filter = time_filter.value
         return self
@@ -80,7 +81,9 @@ class QueryBuilder:
     def write_query_to_database(self, query_url: str):
         query = JobPostingQueries(
             url=query_url,
-            company_id=self.company_id if hasattr(self, "company_id") else None,
+            linkedin_company_id=self.company_id
+            if hasattr(self, "company_id")
+            else None,
             keywords=self.keywords,
             location=self.location if hasattr(self, "location") else None,
             salary_range_id=self.salary_range
@@ -94,16 +97,14 @@ class QueryBuilder:
             if hasattr(self, "remote_modality")
             else None,
         )
-        self.logger.info(f"Adding query to database")
-        with get_db() as session:
+        self.logger.info("Adding query to database")
+        with Session(engine) as session:
             session.add(query)
             session.commit()
             object_id = query.id
-        # return the id of the query
         return object_id
 
     def build_url(self):
-        # Filter out empty strings
         non_empty_params = filter(None, self.params)
         formatted_params = "?" + "&".join(non_empty_params)
         return self.base_url + formatted_params, self.write_query_to_database(
@@ -112,17 +113,15 @@ class QueryBuilder:
 
 
 if __name__ == "__main__":
-    # Example usage
     base_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
     query_builder = QueryBuilder(base_url)
 
     url = (
         query_builder.add_keyword("machine learning engineer")
         .add_location("Washington DC")
-        .add_company_id(None)  # Optional, can be omitted
-        .add_salary_range(FilterSalaryRange.RANGE_140K_PLUS)
-        .add_time_filter(FilterTime.PAST_WEEK)
-        .add_experience_level(FilterExperienceLevel.ANY_EXPERIENCE_LEVEL)
-        .add_remote_modality(FilterRemoteModality.REMOTE)
+        .add_company_id(None)
+        .add_salary_range(SalaryRangeFiltersEnum.RANGE_140K_PLUS)
+        .add_time_filter(TimeFiltersEnum.PAST_WEEK)
+        .add_remote_modality(RemoteModalitiesEnum.REMOTE)
         .build_url()
     )

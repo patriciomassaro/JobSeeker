@@ -1,16 +1,15 @@
 from fastapi.testclient import TestClient
 from sqlmodel import Session
-
 from app import crud
 from app.core.config import settings
-from app.models import User, UserCreate, UserUpdate
+from app.models import Users, UserCreate, UserUpdate
 from app.tests.utils.utils import random_email, random_lower_string
 
 
 def user_authentication_headers(
-    *, client: TestClient, username: str, password: str
+    *, client: TestClient, email: str, password: str
 ) -> dict[str, str]:
-    data = {"username": username, "password": password}
+    data = {"username": email, "password": password}
 
     r = client.post(f"{settings.API_V1_STR}/login/access-token", data=data)
     response = r.json()
@@ -19,28 +18,28 @@ def user_authentication_headers(
     return headers
 
 
-def create_random_user(db: Session) -> User:
-    username = random_email()
+def create_random_user(db: Session) -> [Users, str, str, str]:
+    email = random_email()
     password = random_lower_string()
     name = random_lower_string()
-    user_in = UserCreate(username=username, password=password, name=name)
+    user_in = UserCreate(username=email, password=password, name=name)
     user = crud.create_user(session=db, user_create=user_in)
-    return user
+    return [user, email, password, name]
 
 
-def authentication_token_from_username(
-    *, client: TestClient, username: str, db: Session
+def authentication_token_from_email(
+    *, client: TestClient, email: str, db: Session
 ) -> dict[str, str]:
     """
-    Return a valid token for the user with given username.
+    Return a valid token for the user with given email.
 
     If the user doesn't exist it is created first.
     """
     password = random_lower_string()
     name = random_lower_string()
-    user = crud.get_user_by_username(session=db, username=username)
+    user = crud.get_user_by_username(session=db, username=email)
     if not user:
-        user_in_create = UserCreate(username=username, password=password, name=name)
+        user_in_create = UserCreate(username=email, password=password, name=name)
         user = crud.create_user(session=db, user_create=user_in_create)
     else:
         user_in_update = UserUpdate(password=password)
@@ -48,6 +47,4 @@ def authentication_token_from_username(
             raise Exception("User id not set")
         user = crud.update_user(session=db, db_user=user, user_in=user_in_update)
 
-    return user_authentication_headers(
-        client=client, username=username, password=password
-    )
+    return user_authentication_headers(client=client, email=email, password=password)

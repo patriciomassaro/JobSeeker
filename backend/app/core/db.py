@@ -1,26 +1,29 @@
 from sqlmodel import create_engine, select, Session
+from sqlalchemy.orm import sessionmaker
 
 from app import crud
 from app.core.config import settings
-from app.models.users import Users, UserCreate
-from app.models.enums import (
+from app.models import (
+    Users,
+    UserCreate,
     InstitutionSizesEnum,
-    FilterTimeEnum,
+    TimeFiltersEnum,
     SeniorityLevelsEnum,
-    FilterSalaryRangesEnum,
+    SalaryRangeFiltersEnum,
     RemoteModalitiesEnum,
     EmploymentTypesEnum,
     ExperienceLevelsEnum,
     InstitutionSizes,
-    FilterTimes,
+    TimeFilters,
     SeniorityLevels,
-    FilterSalaryRanges,
+    SalaryRangeFilters,
     RemoteModalities,
     EmploymentTypes,
     ExperienceLevels,
 )
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 def init_db(session: Session) -> None:
@@ -37,18 +40,18 @@ def init_db(session: Session) -> None:
 
     enums = [
         InstitutionSizesEnum,
-        FilterTimeEnum,
+        TimeFiltersEnum,
         SeniorityLevelsEnum,
-        FilterSalaryRangesEnum,
+        SalaryRangeFiltersEnum,
         RemoteModalitiesEnum,
         EmploymentTypesEnum,
         ExperienceLevelsEnum,
     ]
     tables = [
         InstitutionSizes,
-        FilterTimes,
+        TimeFilters,
         SeniorityLevels,
-        FilterSalaryRanges,
+        SalaryRangeFilters,
         RemoteModalities,
         EmploymentTypes,
         ExperienceLevels,

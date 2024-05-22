@@ -11,10 +11,11 @@ def random_lower_string() -> str:
 
 
 def random_email() -> str:
-    return f"{random_lower_string()}@{random_lower_string()}.com"
+    random_int = random.randint(1, 1000)
+    return f"pytest{random_int}@gmail.com"
 
 
-def get_superuser_token_headers(client: TestClient) -> dict[str, str]:
+def get_user_token_headers(client: TestClient) -> dict[str, str]:
     login_data = {
         "username": settings.FIRST_SUPERUSER,
         "password": settings.FIRST_SUPERUSER_PASSWORD,

@@ -11,7 +11,7 @@ from sqlmodel import select
 router = APIRouter()
 
 
-@router.get("/", response_model=UserJobPostingComparisonPublic)
+@router.get("/", response_model=UserJobPostingComparisonsPublic)
 def get_user_job_posting_comparisons(
     session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 30
 ):
@@ -28,4 +28,5 @@ def get_user_job_posting_comparisons(
         UserJobPostingComparisonPublic.model_validate(comparison)
         for comparison in comparisons
     ]
+    print(public_comparisons)
     return UserJobPostingComparisonsPublic(data=public_comparisons)
