@@ -16,13 +16,6 @@ def db() -> Generator[Session, None, None]:
     with Session(engine) as session:
         init_db(session)
         yield session
-        # delete all users that were created during the tests ( they have a pytest email)
-        test_users = session.exec(
-            select(Users).where(func.like(Users.username, "pytest"))
-        ).all()
-        for test_user in test_users:
-            session.delete(test_user)
-        session.commit()
 
 
 @pytest.fixture(scope="module")

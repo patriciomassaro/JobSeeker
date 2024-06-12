@@ -1,12 +1,13 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import String
+from sqlalchemy import String, TEXT
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
-from sqlmodel import Column, Field, SQLModel, Relationship
+from sqlmodel import Column, Field, SQLModel, Relationship, BigInteger, UniqueConstraint
 
 from app.core.utils import snake_case
+
 ############# USERS #############
 
 
@@ -76,6 +77,7 @@ class Users(UserPublicMe, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": datetime.utcnow()},
     )
+    is_superuser: bool = False
 
     user_job_posting_comparisons: list["UserJobPostingComparisons"] = Relationship(
         back_populates="user"
@@ -117,14 +119,16 @@ class BaseEnum(Enum):
         self.description = description
 
     @classmethod
-    def get_id(cls, description: str) -> int | None:
+    def get_id(cls, description: str | None) -> int | None:
+        if description is None:
+            return None
         for item in cls:  # type: ignore
-            if item.description == description:
+            if item.description.lower() == description.lower():
                 return item.id
         return None
 
     @classmethod
-    def get_query_param(cls, value, param_name):
+    def get_query_param(cls, value, param_name: str, value_index: int = 1) -> str:
         """
         Get the query parameter for the given value, used to build the URL query string
         param_name: str
@@ -132,18 +136,23 @@ class BaseEnum(Enum):
         """
         for item in cls:
             if item.value == value:
-                return f"{param_name}{item.value}" if item.value is not None else ""
+                return (
+                    f"{param_name}{item.value[value_index]}"
+                    if item.value[value_index] is not None
+                    else ""
+                )
         return ""
 
 
 class InstitutionSizesEnum(BaseEnum):
-    SIZE_1_50 = (0, "1-50 employees")
-    SIZE_51_200 = (1, "51-200 employees")
-    SIZE_201_500 = (2, "201-500 employees")
-    SIZE_501_1000 = (3, "501-1,000 employees")
-    SIZE_1001_5000 = (4, "1,001-5,000 employees")
-    SIZE_5001_10000 = (5, "5,001-10,000 employees")
-    SIZE_10001_PLUS = (6, "10,001+ employees")
+    SIZE_2_10 = (0, "2-10 employees")
+    SIZE_1_50 = (1, "11-50 employees")
+    SIZE_51_200 = (2, "51-200 employees")
+    SIZE_201_500 = (3, "201-500 employees")
+    SIZE_501_1000 = (4, "501-1,000 employees")
+    SIZE_1001_5000 = (5, "1,001-5,000 employees")
+    SIZE_5001_10000 = (6, "5,001-10,000 employees")
+    SIZE_10001_PLUS = (7, "10,001+ employees")
 
 
 class SeniorityLevelsEnum(BaseEnum):
@@ -270,9 +279,11 @@ class InstitutionBase(SQLModel):
     website: str
     industry: str
     website: str
-    indsutry: str
+    industry: str
     size: int = Field(foreign_key="institution_sizes.id")
-    followers: int
+    followers: int | None
+    employees: int | None
+    tagline: str | None
     location: str | None
     specialties: list[str] | None = Field(sa_column=Column(ARRAY(String)), default=None)
 
@@ -300,7 +311,7 @@ class Institutions(InstitutionPublic, table=True):
 class JobPostingBase(SQLModel):
     title: str
     company: str
-    company_url: str
+    company_url: str | None
     location: str | None
     description: str
     seniority_level: int | None = Field(foreign_key="seniority_levels.id", default=None)
@@ -339,7 +350,11 @@ class JobPostings(JobPostingPublic, table=True):
     def __tablename__(cls) -> str:  # type: ignore
         return snake_case(cls.__name__)
 
+    __table_args__ = (UniqueConstraint("linkedin_id", name="uq_linkedin_id"),)
+
     id: int = Field(default=None, primary_key=True)
+    linkedin_id: int = Field(sa_column=Column(BigInteger))
+    html: str = Field(sa_column=Column(TEXT))
     date_created: datetime = Field(default_factory=datetime.utcnow)
     date_updated: datetime = Field(
         default_factory=datetime.utcnow,
@@ -391,6 +406,13 @@ class UserJobPostingComparisons(UserJobPostingComparisonPublic, table=True):
     )
     work_experiences: list["WorkExperiences"] = Relationship(
         back_populates="user_job_posting_comparison"
+    )
+    work_experience_examples: list["WorkExperienceExamples"] = Relationship(
+        back_populates="user_job_posting_comparison"
+    )
+
+    cover_letter_paragraph_examples: list["CoverLetterParagraphExamples"] = (
+        Relationship(back_populates="user_job_posting_comparison")
     )
 
 
@@ -467,6 +489,10 @@ class WorkExperiences(WorkExperiencePublic, table=True):
 
 
 class JobPostingQueries(SQLModel, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
     id: int | None = Field(default=None, primary_key=True)
     url: str
     keywords: str
@@ -485,3 +511,53 @@ class JobPostingQueries(SQLModel, table=True):
         foreign_key="remote_modalities.id", default=None
     )
     time_filter_id: int | None = Field(foreign_key="time_filters.id", default=None)
+
+
+######## WORK_EPXERIENCE_EXAMPLES ########
+
+
+class WorkExperienceExampleBase(SQLModel):
+    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    original_title: str
+    original_accomplishments: list[str] | None = Field(
+        sa_column=Column(ARRAY(String)), default=None
+    )
+    edited_title: str
+    edited_accomplishments: list[str] | None = Field(
+        sa_column=Column(ARRAY(String)), default=None
+    )
+
+
+class WorkExperienceExamples(WorkExperienceExampleBase, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    id: int = Field(default=None, primary_key=True)
+
+    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
+        back_populates="work_experience_examples"
+    )
+
+
+##### Cover Letter Paragraph Examples ######
+
+
+class CoverLetterParagraphExampleBase(SQLModel):
+    __tablename__ = "cover_letter_paragraphs_examples"
+    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    paragraph_number: int
+    original_paragraph_text: str
+    edited_paragraph_text: str
+
+
+class CoverLetterParagraphExamples(CoverLetterParagraphExampleBase, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    id: int = Field(default=None, primary_key=True)
+
+    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
+        back_populates="cover_letter_paragraph_examples"
+    )

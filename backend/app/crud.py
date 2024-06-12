@@ -6,9 +6,15 @@ from app.core.security import get_password_hash, verify_password
 from app.models import Users, UserCreate, UserUpdate
 
 
-def create_user(*, session: Session, user_create: UserCreate) -> Users:
+def create_user(
+    *, session: Session, user_create: UserCreate, is_superuser: bool = False
+) -> Users:
     db_obj = Users.model_validate(
-        user_create, update={"password": get_password_hash(user_create.password)}
+        user_create,
+        update={
+            "password": get_password_hash(user_create.password),
+            "is_superuser": is_superuser,
+        },
     )
     session.add(db_obj)
     session.commit()

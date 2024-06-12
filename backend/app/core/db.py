@@ -36,7 +36,7 @@ def init_db(session: Session) -> None:
             password=settings.FIRST_SUPERUSER_PASSWORD,
             name=settings.FIRST_SUPERUSER_NAME,
         )
-        user = crud.create_user(session=session, user_create=user_in)
+        user = crud.create_user(session=session, user_create=user_in, is_superuser=True)
 
     enums = [
         InstitutionSizesEnum,

@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 6f41e8fcd117
+Revision ID: 1c3077bde91d
 Revises: 
-Create Date: 2024-05-22 16:01:29.317419
+Create Date: 2024-05-23 18:42:37.063982
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '6f41e8fcd117'
+revision = '1c3077bde91d'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -68,6 +68,7 @@ def upgrade():
     sa.Column('parsed_skills', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('additional_info', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('password', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
