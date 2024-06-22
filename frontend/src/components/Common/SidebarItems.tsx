@@ -3,11 +3,12 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { FiBriefcase, FiHome, FiSettings, FiUsers } from "react-icons/fi"
 
-import type { UserPublic } from "../../client"
+import type { UserPublicMe } from "../../client"
 
 const items = [
   { icon: FiHome, title: "Dashboard", path: "/" },
-  { icon: FiBriefcase, title: "Items", path: "/items" },
+  { icon: FiBriefcase, title: "Job Postings", path: "/jobpostings" },
+  { icon: FiUsers, title: "Applications", path: "/comparisons" },
   { icon: FiSettings, title: "User Settings", path: "/settings" },
 ]
 
@@ -19,7 +20,7 @@ const SidebarItems = ({ onClose }: SidebarItemsProps) => {
   const queryClient = useQueryClient()
   const textColor = useColorModeValue("ui.main", "ui.light")
   const bgActive = useColorModeValue("#E2E8F0", "#4A5568")
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
 
   const finalItems = currentUser?.is_superuser
     ? [...items, { icon: FiUsers, title: "Admin", path: "/admin" }]

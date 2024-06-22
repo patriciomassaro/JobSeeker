@@ -2476,6 +2476,17 @@ toml = ["tomli (>=2.0.1)"]
 yaml = ["pyyaml (>=6.0.1)"]
 
 [[package]]
+name = "pypdf2"
+version = "1.28.6"
+description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
+optional = false
+python-versions = ">=2.7"
+files = [
+    {file = "PyPDF2-1.28.6-py3-none-any.whl", hash = "sha256:d7118f0187153257b1f906dcfcd8236608f4987b6a9999b7c5ad49114706a1ad"},
+    {file = "PyPDF2-1.28.6.tar.gz", hash = "sha256:c0840835d18357b077da05bdad1423f5e29419f318135b6a6542895930dc4905"},
+]
+
+[[package]]
 name = "pysocks"
 version = "1.7.1"
 description = "A Python SOCKS client module. See https://github.com/Anorov/PySocks for more information."
@@ -3783,4 +3794,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "940fea6133045b89268ddb0447d250a98c0f8f2ccecfd01b2af60e0c08d7eaf2"
+content-hash = "29af2b14b269c5c727d5a3b13228588390dfaf1e39a263812dcbb5f4ba3230f5"

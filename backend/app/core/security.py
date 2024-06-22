@@ -20,9 +20,6 @@ def create_access_token(subject: str | Any, expires_delta: timedelta) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    print(plain_password)
-    print(pwd_context.verify(get_password_hash("password"), hashed_password))
-    print(hashed_password)
     return pwd_context.verify(plain_password, hashed_password)
 
 

@@ -1,5 +1,7 @@
 import os
 from sqlmodel import Session, select
+from sqlalchemy import desc, asc
+
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_community.callbacks import get_openai_callback
@@ -17,29 +19,28 @@ from app.models import (
     WorkExperienceExamples,
 )
 from pydantic import BaseModel, Field
-from typing import List
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-class WorkExperience(BaseModel):
+class WorkExperienceLLM(BaseModel):
     title: str = Field(description="Title of the position held.")
     company_name: str = Field(
         description="Name of the company where the position was held."
     )
-    start_year: str = Field(
+    start_date: str = Field(
         description="Start date of the employment in YYYY-MM format."
     )
-    end_year: str | None = Field(
+    end_date: str | None = Field(
         None, description="End date of the employment in YYYY-MM format, if applicable."
     )
-    accomplishments: List[str] = Field(
+    accomplishments: list[str] = Field(
         description="List of achievements or responsibilities in the position."
     )
 
 
-class WorkExperiences(BaseModel):
-    work_experiences: List[WorkExperience] = Field(
+class WorkExperiencesLLM(BaseModel):
+    work_experiences: list[WorkExperienceLLM] = Field(
         description="List of work experiences."
     )
 
@@ -110,7 +111,7 @@ CV_PROMPT_TEMPLATE = """
 class CVBuilder(BaseBuilder):
     def __init__(
         self,
-        model_name: ModelNames,
+        model_name: str,
         user_id: int,
         temperature: float = 0,
         log_file_name="llm.log",
@@ -124,8 +125,9 @@ class CVBuilder(BaseBuilder):
             log_prefix=log_prefix,
         )
         self.examples = self._get_examples_from_db()
-        self.output_parser = JsonOutputParser(pydantic_object=WorkExperiences)
+        self.output_parser = JsonOutputParser(pydantic_object=WorkExperiencesLLM)
         self._create_chain()
+        print("CV Builder instantiated")
 
     def _get_examples_from_db(self):
         examples_list = []
@@ -135,11 +137,11 @@ class CVBuilder(BaseBuilder):
                     UserJobPostingComparisons.user_id == self.user_id
                 )
             ).all()
-            comparison_ids = [x[0] for x in comparison_ids]
+            comparison_ids = list(comparison_ids)
 
             examples = session.exec(
                 select(WorkExperienceExamples).where(
-                    WorkExperienceExamples.compare_id.in_(comparison_ids)
+                    WorkExperienceExamples.comparison_id.in_(comparison_ids)
                 )
             ).all()
 
@@ -184,6 +186,7 @@ class CVBuilder(BaseBuilder):
         self.chain = self.template | self.llm | self.output_parser
 
     def _run_chain(self, job_id: int):
+        print("Running chain")
         with get_openai_callback() as cb:
             result = self.chain.invoke(
                 {
@@ -194,7 +197,7 @@ class CVBuilder(BaseBuilder):
             self.logger.info(f"Built CV for user {self.user_id} and {job_id} \n {cb}")
             return result
 
-    def _save_cv_to_database(self, job_id: int, pdf_bytes: bytes, tex_string: str):
+    def _save_cv_to_database(self, job_id: int, pdf_bytes: bytes):
         with Session(engine) as session:
             comparison = session.exec(
                 select(UserJobPostingComparisons).where(
@@ -203,14 +206,13 @@ class CVBuilder(BaseBuilder):
                 )
             ).first()
             if comparison:
-                comparison.cv_pdf = pdf_bytes
-                comparison.cv_tex = tex_string
+                comparison.resume = pdf_bytes
                 session.commit()
             else:
                 self.logger.error("Comparison not found in database.")
 
     def _save_work_experiences_to_database(
-        self, job_id: int, custom_work_experiences: List[WorkExperience]
+        self, job_id: int, custom_work_experiences: list[WorkExperiences]
     ):
         with Session(engine) as session:
             comparison = session.exec(
@@ -218,17 +220,10 @@ class CVBuilder(BaseBuilder):
                     UserJobPostingComparisons.job_posting_id == job_id,
                     UserJobPostingComparisons.user_id == self.user_id,
                 )
-            ).first()
+            ).one_or_none()
+
             if not comparison:
-                # create the comparison
-                comparison = UserJobPostingComparisons(
-                    job_posting_id=job_id,
-                    user_id=self.user_id,
-                    comparison={},
-                    cv_pdf=None,
-                    cv_tex=None,
-                )
-                session.add(comparison)
+                raise ValueError("Comparison not found in database.")
 
             session.query(WorkExperiences).filter_by(
                 comparison_id=comparison.id
@@ -236,8 +231,8 @@ class CVBuilder(BaseBuilder):
             for work_experience in custom_work_experiences:
                 work_experience_paragraph = WorkExperiences(
                     comparison_id=comparison.id,
-                    start_year=work_experience.get("start_year", ""),
-                    end_year=work_experience.get("end_year", ""),
+                    start_date=work_experience.get("start_date", ""),
+                    end_date=work_experience.get("end_date", ""),
                     company=work_experience.get("company_name", ""),
                     title=work_experience.get("title", ""),
                     accomplishments=work_experience.get("accomplishments", []),
@@ -247,17 +242,10 @@ class CVBuilder(BaseBuilder):
 
     def _load_personal_data_to_cv(self, template: str) -> str:
         with Session(engine) as session:
-            personal_data = (
-                session.exec(
-                    select(UserJobPostingComparisons).where(
-                        UserJobPostingComparisons.user_id == self.user_id
-                    )
-                )
-                .first()
-                .parsed_personal
-            )
+            user = session.exec(select(Users).where(Users.id == self.user_id)).first()
 
-            if personal_data:
+            if user and user.parsed_personal:
+                personal_data = user.parsed_personal
                 template = template.replace(
                     "FIRSTNAME", personal_data.get("first_name", "")
                 )
@@ -283,21 +271,15 @@ class CVBuilder(BaseBuilder):
                             f"\\social[github][{personal_link}]{{{personal_link}}}\n"
                         )
                 template = template.replace("SOCIAL", personal_links_string)
-            else:
-                self.logger.error("User not found in database.")
         return template
 
     def _add_education_to_cv(self, template: str) -> str:
         with Session(engine) as session:
             education_string = "\\section{Education}"
-            education_data = (
-                session.query(Users)
-                .filter_by(id=self.user_id)
-                .first()
-                .parsed_educations
-            )
-            if education_data:
+            user = session.exec(select(Users).where(Users.id == self.user_id)).first()
+            if user and user.parsed_educations:
                 # sort by start date desc
+                education_data = user.parsed_educations
                 education_data = sorted(
                     education_data, key=lambda x: x.get("start_date", ""), reverse=True
                 )
@@ -325,16 +307,15 @@ class CVBuilder(BaseBuilder):
             return template.replace("EDUCATIONS", education_string)
 
     def _add_work_experiences_to_cv(self, template: str, comparison_id: int) -> str:
-        with self.db as session:
-            work_experiences = (
-                session.query(WorkExperienceParagraphs)
-                .filter_by(comparison_id=comparison_id)
+        with Session(engine) as session:
+            statement = (
+                select(WorkExperiences)
+                .where(WorkExperiences.comparison_id == comparison_id)
                 .order_by(
-                    WorkExperienceParagraphs.end_year.desc(),
-                    WorkExperienceParagraphs.start_year.asc(),
+                    desc(WorkExperiences.end_date), asc(WorkExperiences.start_date)
                 )
-                .all()
             )
+            work_experiences = session.exec(statement).all()
             if work_experiences:
                 work_experience_string = "\\section{Work Experience}"
                 for work_experience in work_experiences:
@@ -351,8 +332,8 @@ class CVBuilder(BaseBuilder):
                     else:
                         accomplishments_string = ""
                     work_experience_string += WORK_EXPERIENCE_LATEX_TEMPLATE.format(
-                        START_DATE=work_experience.start_year,
-                        END_DATE=work_experience.end_year,
+                        START_DATE=work_experience.start_date,
+                        END_DATE=work_experience.end_date,
                         TITLE=work_experience.title,
                         COMPANY=work_experience.company,
                         ACCOMPLISHMENTS=accomplishments_string,
@@ -362,12 +343,12 @@ class CVBuilder(BaseBuilder):
             return template.replace("WORKEXPERIENCES", work_experience_string)
 
     def _add_languages_to_cv(self, template: str) -> str:
-        with self.db as session:
+        with Session(engine) as session:
             language_string = "\section{Languages}"
-            language_data = (
-                session.query(Users).filter_by(id=self.user_id).first().parsed_languages
-            )
-            if language_data:
+            user = session.exec(select(Users).where(Users.id == self.user_id)).first()
+
+            if user and user.parsed_languages:
+                language_data = user.parsed_languages
                 for language in language_data:
                     language_string += LANGUAGE_LATEX_TEMPLATE.format(
                         LANGUAGE=language.get("language", ""),
@@ -376,12 +357,11 @@ class CVBuilder(BaseBuilder):
         return template.replace("LANGUAGES", language_string)
 
     def _add_skills_to_cv(self, template: str) -> str:
-        with self.db as session:
+        with Session(engine) as session:
             skills_string = ""
-            skills_data = (
-                session.query(Users).filter_by(id=self.user_id).first().parsed_skills
-            )
-            if skills_data:
+            user = session.exec(select(Users).where(Users.id == self.user_id)).first()
+            if user and user.parsed_skills:
+                skills_data = user.parsed_skills
                 skills_string = SKILLS_LATEX_TEMPLATE.format(
                     SKILLS=", ".join(skills_data)
                 )
@@ -389,9 +369,9 @@ class CVBuilder(BaseBuilder):
 
     def _generate_tailored_cv(self, job_id: int):
         # get the comparison
-        with self.db as session:
+        with Session(engine) as session:
             comparison = (
-                session.query(UserJobComparison)
+                session.query(UserJobPostingComparisons)
                 .filter_by(job_posting_id=job_id, user_id=self.user_id)
                 .first()
             )
@@ -409,7 +389,7 @@ class CVBuilder(BaseBuilder):
                 self.logger.error("Comparison not found in database.")
 
     def _build(self, job_id: int, use_llm=True):
-        self.logger.info(f"Building CV for user {self.user_id}" and f"Job {job_id}")
+        self.logger.info(f"Building CV for user {self.user_id} and Job {job_id}")
         if use_llm:
             custom_work_experiences = self._run_chain(job_id=job_id)
             custom_work_experiences = custom_work_experiences["work_experiences"]
@@ -427,14 +407,7 @@ class CVBuilder(BaseBuilder):
                 f"{self._get_job_company_and_position(job_id)}_CV",
             ),
         )
-        self._save_cv_to_database(
-            job_id=job_id, pdf_bytes=pdf_bytes, tex_string=custom_cv_latex
-        )
+        self._save_cv_to_database(job_id=job_id, pdf_bytes=pdf_bytes)
         self._cleanup_build_directory(
             os.path.join(ROOT_DIR, "media", f"{self.user_id}")
         )
-
-
-if __name__ == "__main__":
-    cv_builder = CVBuilder(model_name=ModelNames.GPT4_TURBO, user_id=1, temperature=0.3)
-    cv_builder.build(job_ids=[3872263836])

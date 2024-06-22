@@ -106,13 +106,13 @@ class JobPosting(BaseModel):
 class JobDescriptionLLMExtractor(BaseLLMExtractor):
     def __init__(
         self,
-        model_name: ModelNames,
+        model_name: str,
         temperature: float = 0,
         log_file_name="llm.log",
         log_prefix="JobDescriptionExtractor",
     ):
         super().__init__(
-            model_name=model_name.value,
+            model_name=model_name,
             pydantic_object=JobPosting,  # type: ignore
             temperature=temperature,
             log_prefix=log_prefix,
@@ -180,12 +180,16 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                     Institutions,
                     JobPostings.company_url == Institutions.url,
                 )
-                .outerjoin(InstitutionSizes, Institutions.size == InstitutionSizes.id)
                 .outerjoin(
-                    SeniorityLevels, JobPostings.seniority_level == SeniorityLevels.id
+                    InstitutionSizes, Institutions.size_id == InstitutionSizes.id
                 )
                 .outerjoin(
-                    EmploymentTypes, JobPostings.employment_type == EmploymentTypes.id
+                    SeniorityLevels,
+                    JobPostings.seniority_level_id == SeniorityLevels.id,
+                )
+                .outerjoin(
+                    EmploymentTypes,
+                    JobPostings.employment_type_id == EmploymentTypes.id,
                 )
                 .filter(JobPostings.id == job_posting_id)
                 .first()
@@ -197,19 +201,21 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                     f"Job posting {job_posting_id} not found in the database."
                 )
 
-    def extract_job_posting_and_write_to_db(self, job_id: int, replace_existing: bool):
+    def extract_job_posting_and_write_to_db(
+        self, job_id: int, replace_existing: bool = True
+    ):
         self.logger.info(f"Extracting job posting {job_id}...")
         with Session(engine) as session:
             job_posting_record = (
                 session.query(JobPostings).filter(JobPostings.id == job_id).first()
             )
             if job_posting_record:
-                if replace_existing or job_posting_record.job_posting_summary is None:
+                if replace_existing or job_posting_record.summary is None:
                     job_posting = self.get_job_data_from_text(job_id)
                     job_description_extraction = self.extract_data_from_text(
                         text=job_posting
                     )
-                    job_posting_record.job_posting_summary = job_description_extraction
+                    job_posting_record.summary = job_description_extraction
                     session.commit()
                     self.logger.info(f"Job posting {job_id} updated successfully.")
                     return 1

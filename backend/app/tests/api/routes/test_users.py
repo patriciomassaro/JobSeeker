@@ -93,7 +93,6 @@ def test_update_user_me(client: TestClient, db: Session) -> None:
     user_query = select(Users).where(Users.username == username)
     user_db = db.exec(user_query).first()
     assert user_db
-    print(user_db.username, user_db.name)
     assert user_db.username == username
     assert user_db.name == new_name
 

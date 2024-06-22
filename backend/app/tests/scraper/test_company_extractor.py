@@ -263,7 +263,6 @@ def test_process_companies_parallel(db: Session):
 
     # Mock the search_linkedin_company_and_get_html method to return our HTML_COMPANY_1 and HTML_COMPANY_2
     def mock_search_linkedin_company_and_get_html(self, company_url, driver, wait):
-        print(f"Mock called for URL: {company_url}")
         if "test-company1" in company_url:
             return HTML_COMPANY_1
         elif "test-company2" in company_url:

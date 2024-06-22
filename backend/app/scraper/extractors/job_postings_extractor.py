@@ -261,8 +261,8 @@ class JobPostingDataExtractor:
             html=str(job_soup),
             title=self._extract_job_title(job_soup),
             location=self._extract_job_location(job_soup),
-            seniority_level=self._extract_seniority_level(job_soup),
-            employment_type=self._extract_employment_type(job_soup),
+            seniority_level_id=self._extract_seniority_level(job_soup),
+            employment_type_id=self._extract_employment_type(job_soup),
             description=self._extract_job_description(job_soup),
             company=self._extract_company_name(job_soup),
             company_url=self._extract_company_url(job_soup),
@@ -342,7 +342,7 @@ class JobPostingDataExtractor:
                     job_posting = future.result()
                     job_postings.append(job_posting)
                 except Exception as exc:
-                    print(f"Job ID {job_id} generated an exception: {exc}")
+                    self.logger.error(f"Job ID {job_id} generated an exception: {exc}")
                     job_postings.append(None)
 
         return job_postings

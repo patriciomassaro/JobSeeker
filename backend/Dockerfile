@@ -41,6 +41,12 @@ RUN CHROME_VERSION=$(google-chrome --product-version | cut -d'.' -f1-3) && \
 # Verify ChromeDriver installation
 RUN chromedriver --version
 
+# Install TeX Live
+RUN apt-get update && \
+    apt-get install -y texlive-full
+# Verify TeX Live installation
+RUN pdflatex --version
+
 ENV PYTHONPATH=/app
 
 COPY ./scripts/ /app/

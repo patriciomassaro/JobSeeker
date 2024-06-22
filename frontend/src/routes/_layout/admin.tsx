@@ -17,9 +17,8 @@ import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { Suspense } from "react"
-import { type UserPublic, UsersService } from "../../client"
-import ActionsMenu from "../../components/Common/ActionsMenu"
-import Navbar from "../../components/Common/Navbar"
+import { type UserPublicMe, UsersService } from "../../client"
+// import ActionsMenu from "../../components/Common/ActionsMenu"
 
 export const Route = createFileRoute("/_layout/admin")({
   component: Admin,
@@ -27,48 +26,46 @@ export const Route = createFileRoute("/_layout/admin")({
 
 const MembersTableBody = () => {
   const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
 
-  const { data: users } = useSuspenseQuery({
-    queryKey: ["users"],
-    queryFn: () => UsersService.readUsers({}),
+  const { data: user } = useSuspenseQuery({
+    queryKey: ["user"],
+    queryFn: () => UsersService.readUserMe(),
   })
 
   return (
     <Tbody>
-      {users.data.map((user) => (
-        <Tr key={user.id}>
-          <Td color={!user.full_name ? "ui.dim" : "inherit"}>
-            {user.full_name || "N/A"}
-            {currentUser?.id === user.id && (
-              <Badge ml="1" colorScheme="teal">
-                You
-              </Badge>
-            )}
-          </Td>
-          <Td>{user.email}</Td>
-          <Td>{user.is_superuser ? "Superuser" : "User"}</Td>
-          <Td>
-            <Flex gap={2}>
-              <Box
-                w="2"
-                h="2"
-                borderRadius="50%"
-                bg={user.is_active ? "ui.success" : "ui.danger"}
-                alignSelf="center"
-              />
-              {user.is_active ? "Active" : "Inactive"}
-            </Flex>
-          </Td>
-          <Td>
-            <ActionsMenu
-              type="User"
-              value={user}
-              disabled={currentUser?.id === user.id ? true : false}
+      <Tr key={user.id}>
+        <Td color={!user.name ? "ui.dim" : "inherit"}>
+          {user.name || "N/A"}
+          {currentUser?.id === user.id && (
+            <Badge ml="1" colorScheme="teal">
+              You
+            </Badge>
+          )}
+        </Td>
+        <Td>{user.username}</Td>
+        <Td>{user.is_superuser ? "Superuser" : "User"}</Td>
+        <Td>
+          <Flex gap={2}>
+            <Box
+              w="2"
+              h="2"
+              borderRadius="50%"
+              bg={user.is_superuser ? "ui.success" : "ui.danger"}
+              alignSelf="center"
             />
-          </Td>
-        </Tr>
-      ))}
+            {user.is_superuser ? "Active" : "Inactive"}
+          </Flex>
+        </Td>
+        <Td>
+          {/* <ActionsMenu */}
+          {/*   type="User" */}
+          {/*   value={user} */}
+          {/*   disabled={currentUser?.id === user.id ? true : false} */}
+          {/* /> */}
+        </Td>
+      </Tr>
     </Tbody>
   )
 }
@@ -93,7 +90,6 @@ function Admin() {
       <Heading size="lg" textAlign={{ base: "center", md: "left" }} pt={12}>
         User Management
       </Heading>
-      <Navbar type={"User"} />
       <TableContainer>
         <Table fontSize="md" size={{ base: "sm", md: "md" }}>
           <Thead>

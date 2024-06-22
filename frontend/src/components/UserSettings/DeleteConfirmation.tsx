@@ -11,7 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import React from "react"
 import { useForm } from "react-hook-form"
 
-import { type ApiError, type UserPublic, UsersService } from "../../client"
+import { type ApiError, type UserPublicMe, UsersService } from "../../client"
 import useAuth from "../../hooks/useAuth"
 import useCustomToast from "../../hooks/useCustomToast"
 
@@ -28,7 +28,7 @@ const DeleteConfirmation = ({ isOpen, onClose }: DeleteProps) => {
     handleSubmit,
     formState: { isSubmitting },
   } = useForm()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
   const { logout } = useAuth()
 
   const mutation = useMutation({

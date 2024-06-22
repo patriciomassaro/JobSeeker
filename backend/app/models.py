@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+from pydantic import constr
 
 from sqlalchemy import String, TEXT
 from sqlalchemy.ext.declarative import declared_attr
@@ -7,6 +8,32 @@ from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlmodel import Column, Field, SQLModel, Relationship, BigInteger, UniqueConstraint
 
 from app.core.utils import snake_case
+from app.llm import ModelNames
+
+
+############# LLM NAMES #########
+class AvailableLLMModels(SQLModel):
+    """list all model names available in the backend"""
+
+    llm_alias: str
+    llm_value: str
+
+
+class ModelParameters(SQLModel):
+    name: str
+    temperature: float
+
+    def __init__(self, name: str, temperature: float):
+        if name not in ModelNames.__members__:
+            raise ValueError(f"Model name must be one of {ModelNames.__members__}")
+        if temperature < 0.0 or temperature > 2.0:
+            raise ValueError("Temperature must be between 0.0 and 2.0")
+        self.name = name
+        self.temperature = temperature
+
+    def get_value(self):
+        return ModelNames[self.name].value
+
 
 ############# USERS #############
 
@@ -280,7 +307,7 @@ class InstitutionBase(SQLModel):
     industry: str
     website: str
     industry: str
-    size: int = Field(foreign_key="institution_sizes.id")
+    size_id: int = Field(foreign_key="institution_sizes.id")
     followers: int | None
     employees: int | None
     tagline: str | None
@@ -296,7 +323,7 @@ class InstitutionsPublic(SQLModel):
     data: list[InstitutionPublic]
 
 
-class Institutions(InstitutionPublic, table=True):
+class Institutions(InstitutionBase, table=True):
     id: int = Field(default=None, primary_key=True)
     date_created: datetime = Field(default_factory=datetime.utcnow)
     date_updated: datetime = Field(
@@ -306,25 +333,20 @@ class Institutions(InstitutionPublic, table=True):
 
 
 ############# JOB_Postings #############
+class JobQueryParams(SQLModel):
+    skip: int = 0
+    limit: int = 30
+    job_title: str | None = None
+    company_name: str | None = None
 
 
 class JobPostingBase(SQLModel):
+    id: int = Field(default=None, primary_key=True)
     title: str
     company: str
     company_url: str | None
     location: str | None
     description: str
-    seniority_level: int | None = Field(foreign_key="seniority_levels.id", default=None)
-    employment_type: int | None = Field(foreign_key="employment_types.id", default=None)
-    experience_level: int | None = Field(
-        foreign_key="experience_levels.id", default=None
-    )
-    salary_range: int | None = Field(
-        foreign_key="salary_range_filters.id", default=None
-    )
-    remote_modality: int | None = Field(
-        foreign_key="remote_modalities.id", default=None
-    )
     industries: list[str] | None = Field(sa_column=Column(ARRAY(String)), default=None)
     job_functions: list[str] | None = Field(
         sa_column=Column(ARRAY(String)), default=None
@@ -338,22 +360,50 @@ class JobPostingBase(SQLModel):
 
 
 class JobPostingPublic(JobPostingBase):
-    pass
+    seniority_level: str | None = None
+    employment_type: str | None = None
+    experience_level: str | None = None
+    salary_range: str | None = None
+    remote_modality: str | None = None
+    institution_about: str | None = None
+    institution_website: str | None = None
+    institution_industry: str | None = None
+    institution_size: str | None = None
+    institution_followers: int | None = None
+    institution_employees: int | None = None
+    institution_tagline: str | None = None
+    institution_location: str | None = None
+    institution_specialties: list[str] | None = None
 
 
 class JobPostingsPublic(SQLModel):
     data: list[JobPostingPublic]
 
 
-class JobPostings(JobPostingPublic, table=True):
+class JobPostings(JobPostingBase, table=True):
     @declared_attr  # type: ignore
     def __tablename__(cls) -> str:  # type: ignore
         return snake_case(cls.__name__)
 
     __table_args__ = (UniqueConstraint("linkedin_id", name="uq_linkedin_id"),)
 
-    id: int = Field(default=None, primary_key=True)
     linkedin_id: int = Field(sa_column=Column(BigInteger))
+    seniority_level_id: int | None = Field(
+        foreign_key="seniority_levels.id", default=None
+    )
+    employment_type_id: int | None = Field(
+        foreign_key="employment_types.id", default=None
+    )
+    experience_level_id: int | None = Field(
+        foreign_key="experience_levels.id", default=None
+    )
+    salary_range_id: int | None = Field(
+        foreign_key="salary_range_filters.id", default=None
+    )
+    remote_modality_id: int | None = Field(
+        foreign_key="remote_modalities.id", default=None
+    )
+
     html: str = Field(sa_column=Column(TEXT))
     date_created: datetime = Field(default_factory=datetime.utcnow)
     date_updated: datetime = Field(
@@ -371,26 +421,42 @@ class JobPostings(JobPostingPublic, table=True):
 
 class UserJobPostingComparisonBase(SQLModel):
     job_posting_id: int | None = Field(foreign_key="job_postings.id")
-    comparison: dict | None = Field(sa_column=Column(JSON), default=None)
-    cv_pdf: bytes | None = None
-    cover_letter_pdf: bytes | None = None
+    user_id: int | None = Field(foreign_key="users.id")
+    is_active: bool = True
+    id: int = Field(default=None, primary_key=True)
+
+
+class CreateUserJobPostingComparison(SQLModel):
+    job_posting_id: int
+    user_id: int
 
 
 class UserJobPostingComparisonPublic(UserJobPostingComparisonBase):
-    pass
+    title: str
+    location: str | None
+    company: str
+
+
+class UserJobPostingComparisonPublicDetail(UserJobPostingComparisonPublic):
+    comparison: dict | None
+    resume: str | None = None
+    cover_letter: str | None = None
+    work_experiences: "list[WorkExperiencePublic]"
+    cover_letter_paragraphs: "list[CoverLetterParagraphPublic]"
 
 
 class UserJobPostingComparisonsPublic(SQLModel):
     data: list[UserJobPostingComparisonPublic]
 
 
-class UserJobPostingComparisons(UserJobPostingComparisonPublic, table=True):
+class UserJobPostingComparisons(UserJobPostingComparisonBase, table=True):
     @declared_attr  # type: ignore
     def __tablename__(cls) -> str:  # type: ignore
         return snake_case(cls.__name__)
 
-    id: int = Field(default=None, primary_key=True)
-    user_id: int | None = Field(foreign_key="users.id")
+    comparison: dict | None = Field(sa_column=Column(JSON), default=None)
+    resume: bytes | None = None
+    cover_letter: bytes | None = None
     date_created: datetime = Field(default_factory=datetime.utcnow)
     date_updated: datetime = Field(
         default_factory=datetime.utcnow,
@@ -413,6 +479,11 @@ class UserJobPostingComparisons(UserJobPostingComparisonPublic, table=True):
 
     cover_letter_paragraph_examples: list["CoverLetterParagraphExamples"] = (
         Relationship(back_populates="user_job_posting_comparison")
+    )
+
+    # The combination of user_id and job_posting_id should be unique
+    __table_args__ = (
+        UniqueConstraint("user_id", "job_posting_id", name="uq_user_id_job_posting_id"),
     )
 
 
@@ -452,8 +523,8 @@ class CoverLetterParagraphs(CoverLetterParagraphPublic, table=True):
 
 class WorkExperienceBase(SQLModel):
     comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
-    start_year: int
-    end_year: int | None
+    start_date: str
+    end_date: str | None
     title: str
     company: str
     accomplishments: list[str] | None = Field(
@@ -544,7 +615,6 @@ class WorkExperienceExamples(WorkExperienceExampleBase, table=True):
 
 
 class CoverLetterParagraphExampleBase(SQLModel):
-    __tablename__ = "cover_letter_paragraphs_examples"
     comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
     paragraph_number: int
     original_paragraph_text: str

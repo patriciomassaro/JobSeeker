@@ -102,7 +102,7 @@ COVER_LETTER_TEMPLATE = """
 class CoverLetterBuilder(BaseBuilder):
     def __init__(
         self,
-        model_name: ModelNames,
+        model_name: str,
         user_id: int,
         temperature: float = 0,
         log_file_name="llm.log",
@@ -124,14 +124,14 @@ class CoverLetterBuilder(BaseBuilder):
         with Session(engine) as session:
             examples_dict = {}
             for i in range(1, 6):
-                comparison_ids = (
-                    session.query(UserJobPostingComparisons.id)
-                    .filter_by(user_id=self.user_id)
-                    .all()
-                )
-                comparison_ids = [comp_id[0] for comp_id in comparison_ids]
+                comparisons = session.exec(
+                    select(UserJobPostingComparisons).where(
+                        UserJobPostingComparisons.user_id == self.user_id
+                    )
+                ).all()
+                comparison_ids = [comparison.id for comparison in comparisons]
                 examples = session.exec(
-                    select(CoverLetterParagraphExamples).filter(
+                    select(CoverLetterParagraphExamples).where(
                         CoverLetterParagraphExamples.comparison_id.in_(comparison_ids),  # type: ignore
                         CoverLetterParagraphExamples.paragraph_number == i,
                     )
@@ -239,7 +239,7 @@ class CoverLetterBuilder(BaseBuilder):
                 .first()
             )
             if comparison:
-                comparison.cover_letter_pdf = pdf_bytes
+                comparison.cover_letter = pdf_bytes
                 session.commit()
             else:
                 self.logger.error("Comparison not found in database.")

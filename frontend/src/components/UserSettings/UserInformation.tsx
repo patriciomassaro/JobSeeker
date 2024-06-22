@@ -9,6 +9,7 @@ import {
   Heading,
   Input,
   Text,
+  Textarea,
   useColorModeValue,
 } from "@chakra-ui/react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
@@ -17,7 +18,7 @@ import { type SubmitHandler, useForm } from "react-hook-form"
 
 import {
   type ApiError,
-  type UserPublic,
+  type UserPublicMe,
   type UserUpdateMe,
   UsersService,
 } from "../../client"
@@ -37,12 +38,13 @@ const UserInformation = () => {
     reset,
     getValues,
     formState: { isSubmitting, errors, isDirty },
-  } = useForm<UserPublic>({
+  } = useForm<UserPublicMe>({
     mode: "onBlur",
     criteriaMode: "all",
     defaultValues: {
-      full_name: currentUser?.full_name,
-      email: currentUser?.email,
+      name: currentUser?.name,
+      username: currentUser?.username,
+      additional_info: currentUser?.additional_info,
     },
   })
 
@@ -90,7 +92,7 @@ const UserInformation = () => {
             {editMode ? (
               <Input
                 id="name"
-                {...register("full_name", { maxLength: 30 })}
+                {...register("name", { maxLength: 30 })}
                 type="text"
                 size="md"
               />
@@ -98,42 +100,64 @@ const UserInformation = () => {
               <Text
                 size="md"
                 py={2}
-                color={!currentUser?.full_name ? "ui.dim" : "inherit"}
+                color={!currentUser?.name ? "ui.dim" : "inherit"}
               >
-                {currentUser?.full_name || "N/A"}
+                {currentUser?.name || "N/A"}
               </Text>
             )}
           </FormControl>
-          <FormControl mt={4} isInvalid={!!errors.email}>
+          <FormControl mt={4} isInvalid={!!errors.username}>
             <FormLabel color={color} htmlFor="email">
-              Email
+              Username
             </FormLabel>
             {editMode ? (
               <Input
-                id="email"
-                {...register("email", {
-                  required: "Email is required",
+                id="username"
+                {...register("username", {
+                  required: "Username is required",
                   pattern: emailPattern,
                 })}
-                type="email"
+                type="username"
                 size="md"
               />
             ) : (
               <Text size="md" py={2}>
-                {currentUser?.email}
+                {currentUser?.username}
               </Text>
             )}
-            {errors.email && (
-              <FormErrorMessage>{errors.email.message}</FormErrorMessage>
+            {errors.username && (
+              <FormErrorMessage>{errors.username.message}</FormErrorMessage>
             )}
           </FormControl>
+          <FormControl>
+            <FormLabel color={color} htmlFor="additional_info">
+              Additional information
+            </FormLabel>
+            {editMode ? (
+              <Textarea
+                id="additional_info"
+                {...register("additional_info", { maxLength: 1000 })}
+                size="md"
+              />
+            ) : (
+              <Text
+                size="md"
+                py={2}
+                color={!currentUser?.additional_info ? "ui.dim" : "inherit"}
+              >
+                {currentUser?.additional_info || "N/A"}
+              </Text>
+            )}
+          </FormControl>
+
+
           <Flex mt={4} gap={3}>
             <Button
               variant="primary"
               onClick={toggleEditMode}
               type={editMode ? "button" : "submit"}
               isLoading={editMode ? isSubmitting : false}
-              isDisabled={editMode ? !isDirty || !getValues("email") : false}
+              isDisabled={editMode ? !isDirty || !getValues("username") : false}
             >
               {editMode ? "Save" : "Edit"}
             </Button>

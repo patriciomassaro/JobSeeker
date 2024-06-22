@@ -101,18 +101,12 @@ class CVLLMExtractor(BaseLLMExtractor):
             log_file_name=log_file_name,
         )
 
-    def extract_cv_and_write_to_db(
-        self, user_id: int, replace_existing_summary: bool = False
-    ):
+    def extract_cv_and_write_to_db(self, user_id: int):
         self.logger.info(f"Extracting CV data for user {user_id}")
         with Session(engine) as session:
             user_record = session.query(Users).filter(Users.id == user_id).first()
             if user_record:
-                # Check if the user has a resume uploaded and if we should replace the existing summary
-                if user_record.resume and (
-                    replace_existing_summary or not user_record.resume_summary
-                ):
-                    # Extract text from PDF data
+                if user_record.resume:
                     cv_text = extract_text_from_pdf_bytes(user_record.resume)
                     resume_summary = self.extract_data_from_text(text=cv_text)
                     user_record.parsed_personal = resume_summary.get("personal", {})
@@ -128,9 +122,7 @@ class CVLLMExtractor(BaseLLMExtractor):
                     )
                     return 1
                 else:
-                    self.logger.info(
-                        f"User {user_id} already has a CV summary or no resume uploaded. Set replace_existing_summary to True to overwrite."
-                    )
+                    self.logger.info(f"User {user_id} already has no summary")
                     return 0
             else:
                 self.logger.error(f"User with id {user_id} not found.")

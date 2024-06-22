@@ -10,17 +10,20 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
-import type { UserPublic } from "../../client"
+import type { UserPublicMe } from "../../client"
 import Appearance from "../../components/UserSettings/Appearance"
 import ChangePassword from "../../components/UserSettings/ChangePassword"
 import DeleteAccount from "../../components/UserSettings/DeleteAccount"
 import UserInformation from "../../components/UserSettings/UserInformation"
+import UserCV from "../../components/UserSettings/UserCV"
 
 const tabsConfig = [
   { title: "My profile", component: UserInformation },
+  { title: "My CV", component: UserCV },
   { title: "Password", component: ChangePassword },
   { title: "Appearance", component: Appearance },
   { title: "Danger zone", component: DeleteAccount },
+
 ]
 
 export const Route = createFileRoute("/_layout/settings")({
@@ -29,7 +32,7 @@ export const Route = createFileRoute("/_layout/settings")({
 
 function UserSettings() {
   const queryClient = useQueryClient()
-  const currentUser = queryClient.getQueryData<UserPublic>(["currentUser"])
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
   const finalTabs = currentUser?.is_superuser
     ? tabsConfig.slice(0, 3)
     : tabsConfig

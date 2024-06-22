@@ -24,15 +24,13 @@ ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class BaseBuilder:
     def __init__(
         self,
-        model_name: ModelNames,
+        model_name: str,
         user_id: int,
         temperature: float = 0,
         log_file_name="llm.log",
         log_prefix="Builder",
     ):
-        self.llm_init = LLMInitializer(
-            model_name=model_name.value, temperature=temperature
-        )
+        self.llm_init = LLMInitializer(model_name=model_name, temperature=temperature)
         self.llm = self.llm_init.get_llm()
         self.output_parser = StrOutputParser()
         self.user_id = user_id
@@ -139,7 +137,7 @@ class BaseBuilder:
             job_columns = [
                 getattr(JobPostings, attr)
                 for attr in JobPostings.__table__.columns.keys()
-                if attr in ["job_posting_summary"]
+                if attr in ["summary"]
             ]
             job = session.query(*job_columns).filter(JobPostings.id == job_id).first()
             job = json.dumps(job._asdict())
@@ -188,7 +186,10 @@ class BaseBuilder:
             comparison = json.dumps(comparison._asdict())
             return comparison
 
-    def build(self, job_ids: List[int], use_llm: bool = True):
+    def build(self, job_ids: list[int], use_llm: bool = True):
+        self.logger.info(
+            f"Building Resume for job posting {job_ids} and user {self.user_id}..."
+        )
         with ThreadPoolExecutor(max_workers=5) as executor:
             # Submitting tasks to the executor
             future_cv_creation = {

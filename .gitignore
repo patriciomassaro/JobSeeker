@@ -1,2 +1,4 @@
 .vscode
 *.log
+/backend/app/media
+/backend/logs

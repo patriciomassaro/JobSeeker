@@ -15,8 +15,6 @@ from app.models import Institutions, InstitutionSizesEnum
 from app.core.db import engine
 from sqlmodel import Session
 
-import traceback
-
 
 class CompanyExtractor:
     def __init__(
@@ -159,7 +157,7 @@ class CompanyExtractor:
         company_name = self.get_company_name(company_soup)
         industry = self.get_industry(company_soup)
         website = self.get_website(company_soup)
-        size = self.get_size(company_soup)
+        size_id = self.get_size(company_soup)
         specialties = self.get_specialties(company_soup)
         num_employees = self.get_employees(company_soup)
         tagline = self.get_tagline(company_soup)
@@ -170,7 +168,7 @@ class CompanyExtractor:
             "about": about,
             "website": website,
             "industry": industry,
-            "size": size,
+            "size_id": size_id,
             "specialties": specialties,
             "followers": followers,
             "employees": num_employees,
@@ -259,7 +257,6 @@ class CompanyExtractor:
                     self.logger.error(
                         f"Company URL {company_url} generated an exception: {exc}"
                     )
-                    traceback.print_exc()
                     institutions.append(None)
 
         return institutions
@@ -269,24 +266,3 @@ class CompanyExtractor:
             self.logger.info(f"{company.url} - Adding to database")
             session.merge(company)
             session.commit()
-
-
-if __name__ == "__main__":
-    start = time.time()
-    extractor = CompanyExtractor(log_file_name="scraper.log")
-    companies = [
-        "www.linkedin.com/company/bairesdev",
-        "www.linkedin.com/company/Amazon",
-        "www.linkedin.com/company/Google",
-        "www.linkedin.com/company/Microsoft",
-        "www.linkedin.com/company/Apple",
-        "www.linkedin.com/company/Meta",
-        "www.linkedin.com/company/Netflix",
-        "www.linkedin.com/company/Tesla",
-        "www.linkedin.com/company/Twitter",
-        "www.linkedin.com/company/LinkedIn",
-        "www.linkedin.com/company/Uber",
-    ]
-    companies = extractor.process_companies_parallel(companies, max_workers=2)
-    end = time.time()
-    print(f"Time taken: {end - start} seconds, got {len(companies)} companies")

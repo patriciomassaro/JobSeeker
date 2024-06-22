@@ -21,4 +21,3 @@ rabbitmq_handler.declare_queue("companies_to_scrape")
 # Publishing the messages
 for url in not_in_institutions:
     rabbitmq_handler.publish_message(url, "companies_to_scrape")
-    print(f"Published {url} to companies_to_scrape")

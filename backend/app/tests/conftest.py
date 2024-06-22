@@ -1,14 +1,13 @@
 from collections.abc import Generator
 
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
-from sqlalchemy import func
+from sqlmodel import Session
 
 from app.core.db import engine, init_db
 from app.main import app
 from app.tests.utils.utils import get_user_token_headers
-from app.models import Users
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -27,3 +26,16 @@ def client() -> Generator[TestClient, None, None]:
 @pytest.fixture(scope="module")
 def user_token_headers(client: TestClient) -> dict[str, str]:
     return get_user_token_headers(client)
+
+
+@pytest.fixture(autouse=True)
+def mock_env_variables():
+    with patch.dict(
+        "os.environ",
+        {
+            "OPENAI_API_KEY": "fake_openai_key",
+            "GROQ_API_KEY": "fake_groq_key",
+            "ANTHROPIC_API_KEY": "fake_anthropic_key",
+        },
+    ):
+        yield
