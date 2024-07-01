@@ -1,0 +1,3518 @@
+import { ChakraProvider } from "@chakra-ui/react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { RouterProvider, createRouter } from "@tanstack/react-router"
+import ReactDOM from "react-dom/client"
+import { routeTree } from "./routeTree.gen"
+
+import { StrictMode } from "react"
+import { OpenAPI } from "./client"
+import theme from "./theme"
+
+OpenAPI.BASE = import.meta.env.VITE_API_URL
+OpenAPI.TOKEN = async () => {
+  return localStorage.getItem("access_token") || ""
+}
+
+const queryClient = new QueryClient()
+
+const router = createRouter({ routeTree })
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router
+  }
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <ChakraProvider theme={theme}>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ChakraProvider>
+  </StrictMode>,
+)
+import { extendTheme } from "@chakra-ui/react"
+
+const disabledStyles = {
+  _disabled: {
+    backgroundColor: "ui.main",
+  },
+}
+
+const theme = extendTheme({
+  colors: {
+    ui: {
+      main: "#009688",
+      secondary: "#EDF2F7",
+      success: "#48BB78",
+      danger: "#E53E3E",
+      light: "#FAFAFA",
+      dark: "#1A202C",
+      darkSlate: "#252D3D",
+      dim: "#A0AEC0",
+    },
+  },
+  components: {
+    Button: {
+      variants: {
+        primary: {
+          backgroundColor: "ui.main",
+          color: "ui.light",
+          _hover: {
+            backgroundColor: "#00766C",
+          },
+          _disabled: {
+            ...disabledStyles,
+            _hover: {
+              ...disabledStyles,
+            },
+          },
+        },
+        danger: {
+          backgroundColor: "ui.danger",
+          color: "ui.light",
+          _hover: {
+            backgroundColor: "#E32727",
+          },
+        },
+      },
+    },
+    Tabs: {
+      variants: {
+        enclosed: {
+          tab: {
+            _selected: {
+              color: "ui.main",
+            },
+          },
+        },
+      },
+    },
+  },
+})
+
+export default theme
+
+import React from 'react';
+import { Button, HStack, Text } from "@chakra-ui/react";
+
+interface PaginationProps {
+  currentPage: number;
+  onPageChange: (pageNumber: number) => void;
+  totalItems: number;
+  itemsPerPage: number;
+}
+
+const Pagination: React.FC<PaginationProps> = ({
+  currentPage,
+  onPageChange,
+  totalItems,
+  itemsPerPage,
+}) => {
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1);
+    }
+  };
+
+  return (
+    <HStack spacing={4} justifyContent="center" my={4}>
+      <Button onClick={handlePrevious} disabled={currentPage === 1}>
+        Previous
+      </Button>
+      <Text>Page {currentPage} of {totalPages}</Text>
+      <Button onClick={handleNext} disabled={currentPage === totalPages}>
+        Next
+      </Button>
+    </HStack>
+  );
+};
+
+export default Pagination;
+import React from "react";
+import { List, ListItem, Text } from "@chakra-ui/react";
+import { JobPostings, JobPosting } from "../../client/models"
+
+interface JobListProps {
+  jobPostings: JobPostings;
+  onJobSelect: (job: JobPosting) => void;
+}
+const JobList: React.FC<JobListProps> = ({ jobPostings, onJobSelect }) => {
+  return (
+    <List spacing={3}>
+      {jobPostings.data.map((job: JobPosting) => (
+        <ListItem key={job.id} onClick={() => onJobSelect(job)} cursor="pointer" p={2} _hover={{ bg: "gray.100" }}>
+          <Text fontWeight="bold"> {job.title}</Text>
+          <Text>{job.company}</Text>
+          <Text>{job.location ?? "Unknown Location"}</Text>
+        </ListItem>
+      ))}
+    </List>
+  );
+};
+
+export default JobList;
+
+import React from 'react';
+import { Box, Text, Heading } from '@chakra-ui/react';
+import { JobPosting } from '../../client/models';
+
+interface JobDetailsProps {
+  job: JobPosting;
+}
+
+const JobDetails: React.FC<JobDetailsProps> = ({ job }) => {
+
+  const formatDescription = (description: string) => {
+    return description.split('\n').map((line, index) => (
+      <React.Fragment key={index}>
+        {line}
+        <br />
+      </React.Fragment>
+    ));
+  };
+
+
+  return (
+    <Box>
+      <Heading size="lg">{job.title}</Heading>
+      <Text fontWeight="bold">{job.company}</Text>
+      <Text>{job.location ?? 'Location not specified'}</Text>
+      <Text mt={4}>{formatDescription(job.description)}</Text>
+      <Box mt={4}>
+        <Text fontWeight="bold">Seniority Level:</Text>
+        <Text>{job.seniority_level ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Employment Type:</Text>
+        <Text>{job.employment_type ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Experience Level:</Text>
+        <Text>{job.experience_level ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Remote Modality:</Text>
+        <Text>{job.remote_modality ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Salary Range:</Text>
+        <Text>{job.salary_range ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">About the Company:</Text>
+        <Text>{job.institution_about ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Website:</Text>
+        <Text>{job.institution_website ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Industry:</Text>
+        <Text>{job.institution_industry ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Company Size:</Text>
+        <Text>{job.institution_size ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Followers:</Text>
+        <Text>{job.institution_followers ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Employees:</Text>
+        <Text>{job.institution_employees ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Tagline:</Text>
+        <Text>{job.institution_tagline ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Location:</Text>
+        <Text>{job.institution_location ?? 'Not specified'}</Text>
+      </Box>
+      <Box mt={4}>
+        <Text fontWeight="bold">Specialties:</Text>
+        <Text>{job.institution_specialties?.join(', ') ?? 'Not specified'}</Text>
+      </Box>
+    </Box>
+  );
+};
+
+export default JobDetails;
+import React from "react";
+import { List, ListItem, Text } from "@chakra-ui/react";
+import { UserJobPostingComparison, UserJobPostingComparisons } from "../../client/models";
+
+interface ComparisonListProps {
+  jobComparisons: UserJobPostingComparisons;
+  onComparisonSelect: (comparison: UserJobPostingComparison) => void;
+}
+
+const ComparisonList: React.FC<ComparisonListProps> = ({ jobComparisons, onComparisonSelect }) => {
+  return (
+    <List spacing={3}>
+      {jobComparisons.data.map((comparison: UserJobPostingComparison) => (
+        <ListItem
+          key={comparison.id} // Ensure the key is unique for each item
+          onClick={() => onComparisonSelect(comparison)}
+          cursor="pointer"
+          p={2}
+          _hover={{ bg: "gray.100" }}
+        >
+          <Text fontWeight="bold">{comparison.title}</Text>
+          <Text>{comparison.company}</Text>
+          <Text>{comparison.location ?? "Unknown Location"}</Text>
+        </ListItem>
+      ))}
+    </List>
+  );
+};
+
+export default ComparisonList;
+import React, { useState } from "react";
+import {
+  Box,
+  Heading,
+  Text,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Button,
+  useToast,
+} from "@chakra-ui/react";
+import { UserJobPostingComparison } from "../../client/models";
+import { PdfDisplay } from "../Common/PdfDisplay";
+import WorkExperienceDisplay from "./WorkExperienceDisplay";
+import CoverLetterParagraphDisplay from "./CoverLetterParagraphDisplay";
+import ModelTemperatureSelector from "../Common/ModelTemperatureSelector";
+import { UserComparisonServices } from "../../client/services";
+
+interface ComparisonDetailsProps {
+  comparison: UserJobPostingComparison;
+  onComparisonUpdate: (updatedComparison: UserJobPostingComparison) => void;
+}
+
+const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
+  comparison,
+  onComparisonUpdate,
+}) => {
+  const [model, setModel] = useState<string>("");
+  const [temperature, setTemperature] = useState<number>(0.5);
+  const [isGeneratingResume, setIsGeneratingResume] = useState(false);
+  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
+  const toast = useToast();
+
+  const handleGenerateResume = () => {
+    setIsGeneratingResume(true);
+    UserComparisonServices.generateComparisonResume(
+      { comparison_id: comparison.id },
+      {
+        name: model,
+        temperature: temperature,
+      }
+    )
+      .then((response) => {
+        toast({
+          title: "Resume Generated",
+          description: response.message,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        refreshComparisonData();
+      })
+      .catch((error) => {
+        console.error("Error generating resume:", error);
+        toast({
+          title: "Error",
+          description: "Failed to generate resume",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setIsGeneratingResume(false);
+      });
+  };
+
+  const handleGenerateCoverLetter = () => {
+    setIsGeneratingCoverLetter(true);
+    UserComparisonServices.generateComparisonCoverLetter(
+      { comparison_id: comparison.id },
+      {
+        name: model,
+        temperature: temperature,
+      }
+    )
+      .then((response) => {
+        toast({
+          title: "Cover Letter Generated",
+          description: response.message,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        refreshComparisonData();
+      })
+      .catch((error) => {
+        console.error("Error generating cover letter:", error);
+        toast({
+          title: "Error",
+          description: "Failed to generate cover letter",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      })
+      .finally(() => {
+        setIsGeneratingCoverLetter(false);
+      });
+  };
+
+  const refreshComparisonData = () => {
+    UserComparisonServices.getUserComparison({
+      comparison_id: comparison.id,
+      job_posting_id: null,
+    })
+      .then((updatedComparison) => {
+        onComparisonUpdate(updatedComparison as UserJobPostingComparison);
+      })
+      .catch((error) => {
+        console.error("Error refreshing comparison data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to refresh comparison data",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      });
+  };
+
+  return (
+    <Box p={4}>
+      <Heading as="h1" size="xl" mb={4}>
+        {comparison.title}
+      </Heading>
+      <Text fontSize="lg" mb={2}>
+        {comparison.company}
+      </Text>
+      <Text fontSize="md" color="gray.600" mb={4}>
+        {comparison.location ?? "Unknown Location"}
+      </Text>
+
+      <ModelTemperatureSelector
+        model={model}
+        setModel={setModel}
+        temperature={temperature}
+        setTemperature={setTemperature}
+      />
+
+      <Tabs>
+        <TabList>
+          <Tab>Resume</Tab>
+          <Tab>Cover Letter</Tab>
+        </TabList>
+
+        <TabPanels>
+          <TabPanel>
+            <Box mb={4}>
+              {comparison.resume ? (
+                <>
+                  <Button
+                    onClick={handleGenerateResume}
+                    mb={4}
+                    isLoading={isGeneratingResume}
+                    loadingText="Regenerating..."
+                  >
+                    Regenerate Resume
+                  </Button>
+                  <PdfDisplay
+                    base64String={comparison.resume}
+                    fileName={`${comparison.title}_${comparison.company}_Resume.pdf`}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text>No resume available</Text>
+                  <Button
+                    onClick={handleGenerateResume}
+                    mb={4}
+                    isLoading={isGeneratingResume}
+                    loadingText="Generating..."
+                  >
+                    Generate Resume
+                  </Button>
+                </>
+              )}
+            </Box>
+            <Box>
+              <Heading as="h3" size="sm" mb={2}>
+                Work Experiences
+              </Heading>
+              <WorkExperienceDisplay
+                experiences={comparison.work_experiences}
+                onUpdate={refreshComparisonData}
+              />
+            </Box>
+          </TabPanel>
+          <TabPanel>
+            <Box mb={4}>
+              {comparison.cover_letter ? (
+                <>
+                  <Button
+                    onClick={handleGenerateCoverLetter}
+                    mb={4}
+                    isLoading={isGeneratingCoverLetter}
+                    loadingText="Regenerating..."
+                  >
+                    Regenerate Cover Letter
+                  </Button>
+                  <PdfDisplay
+                    base64String={comparison.cover_letter}
+                    fileName={`${comparison.title.replace(/\s+/g, '')}_${comparison.company.replace(/\s+/g, '')}_cover_letter.pdf`}
+                  />
+                </>
+              ) : (
+                <>
+                  <Text>No cover letter available</Text>
+                  <Button
+                    onClick={handleGenerateCoverLetter}
+                    mb={4}
+                    isLoading={isGeneratingCoverLetter}
+                    loadingText="Generating..."
+                  >
+                    Generate Cover Letter
+                  </Button>
+                </>
+              )}
+            </Box>
+            <Box>
+              <Heading as="h3" size="sm" mb={2}>
+                Cover Letter Paragraphs
+              </Heading>
+              <CoverLetterParagraphDisplay
+                paragraphs={comparison.cover_letter_paragraphs}
+                onUpdate={refreshComparisonData}
+              />
+            </Box>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+    </Box>
+  );
+};
+
+export default ComparisonDetails;
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Text,
+  IconButton,
+  Flex,
+  Input,
+  Button,
+  useToast,
+  VStack,
+  HStack,
+} from "@chakra-ui/react";
+import { EditIcon, CheckIcon, CloseIcon, AddIcon, DeleteIcon } from "@chakra-ui/icons";
+import { WorkExperience } from "../../client/models";
+import { UserComparisonServices } from "../../client/services";
+
+interface WorkExperiencesProps {
+  experiences: WorkExperience[] | undefined;
+  onUpdate: () => void;
+}
+
+const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, onUpdate }) => {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedExperiences, setEditedExperiences] = useState<WorkExperience[]>([]);
+  const [newAccomplishment, setNewAccomplishment] = useState("");
+  const toast = useToast();
+
+  useEffect(() => {
+    if (experiences) {
+      setEditedExperiences(experiences);
+    }
+  }, [experiences]);
+
+  const handleEdit = (index: number) => {
+    setEditingIndex(index);
+  };
+
+  const handleSave = async (index: number) => {
+    try {
+      await UserComparisonServices.editWorkExperience({
+        newWorkExperience: editedExperiences[index]
+      });
+      toast({
+        title: "Work Experience updated",
+        description: `Experience ${index + 1} has been successfully updated.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setEditingIndex(null);
+      onUpdate();
+    } catch (error) {
+      console.error("Error updating work experience:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update work experience",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleCancel = (index: number) => {
+    if (experiences) {
+      setEditedExperiences(prevExperiences => {
+        const newExperiences = [...prevExperiences];
+        newExperiences[index] = experiences[index];
+        return newExperiences;
+      });
+    }
+    setEditingIndex(null);
+  };
+
+  const handleChange = (index: number, field: keyof WorkExperience, value: string) => {
+    setEditedExperiences(prevExperiences => {
+      const newExperiences = [...prevExperiences];
+      newExperiences[index] = { ...newExperiences[index], [field]: value };
+      return newExperiences;
+    });
+  };
+
+  const handleAddAccomplishment = (index: number) => {
+    if (newAccomplishment.trim()) {
+      setEditedExperiences(prevExperiences => {
+        const newExperiences = [...prevExperiences];
+        newExperiences[index] = {
+          ...newExperiences[index],
+          accomplishments: [...newExperiences[index].accomplishments, newAccomplishment.trim()]
+        };
+        return newExperiences;
+      });
+      setNewAccomplishment("");
+    }
+  };
+
+  const handleEditAccomplishment = (experienceIndex: number, accomplishmentIndex: number, value: string) => {
+    setEditedExperiences(prevExperiences => {
+      const newExperiences = [...prevExperiences];
+      const newAccomplishments = [...newExperiences[experienceIndex].accomplishments];
+      newAccomplishments[accomplishmentIndex] = value;
+      newExperiences[experienceIndex] = { ...newExperiences[experienceIndex], accomplishments: newAccomplishments };
+      return newExperiences;
+    });
+  };
+
+  const handleRemoveAccomplishment = (experienceIndex: number, accomplishmentIndex: number) => {
+    setEditedExperiences(prevExperiences => {
+      const newExperiences = [...prevExperiences];
+      const newAccomplishments = newExperiences[experienceIndex].accomplishments.filter((_, index) => index !== accomplishmentIndex);
+      newExperiences[experienceIndex] = { ...newExperiences[experienceIndex], accomplishments: newAccomplishments };
+      return newExperiences;
+    });
+  };
+
+  if (!experiences || experiences.length === 0) {
+    return <Box>No work experiences available.</Box>;
+  }
+
+  return (
+    <VStack align="stretch" spacing={4}>
+      {editedExperiences.map((experience, index) => (
+        <Box key={experience.id} p={4} border="1px solid #ccc" borderRadius="md" position="relative">
+          {editingIndex === index ? (
+            <VStack spacing={3} align="stretch">
+              <Input
+                value={experience.title}
+                onChange={(e) => handleChange(index, 'title', e.target.value)}
+                placeholder="Title"
+              />
+              <Input
+                value={experience.company}
+                onChange={(e) => handleChange(index, 'company', e.target.value)}
+                placeholder="Company"
+              />
+              <Input
+                value={experience.start_date}
+                onChange={(e) => handleChange(index, 'start_date', e.target.value)}
+                placeholder="Start Date"
+              />
+              <Input
+                value={experience.end_date}
+                onChange={(e) => handleChange(index, 'end_date', e.target.value)}
+                placeholder="End Date"
+              />
+              <Text fontWeight="bold">Accomplishments:</Text>
+              {experience.accomplishments.map((accomplishment, accIndex) => (
+                <HStack key={accIndex}>
+                  <Input
+                    value={accomplishment}
+                    onChange={(e) => handleEditAccomplishment(index, accIndex, e.target.value)}
+                  />
+                  <IconButton
+                    aria-label="Remove accomplishment"
+                    icon={<DeleteIcon />}
+                    onClick={() => handleRemoveAccomplishment(index, accIndex)}
+                  />
+                </HStack>
+              ))}
+              <HStack>
+                <Input
+                  value={newAccomplishment}
+                  onChange={(e) => setNewAccomplishment(e.target.value)}
+                  placeholder="New accomplishment"
+                />
+                <Button onClick={() => handleAddAccomplishment(index)} leftIcon={<AddIcon />}>
+                  Add
+                </Button>
+              </HStack>
+              <Flex justify="flex-end" mt={4}>
+                <Button onClick={() => handleSave(index)} colorScheme="green" mr={2}>
+                  <CheckIcon mr={2} /> Save
+                </Button>
+                <Button onClick={() => handleCancel(index)} colorScheme="red">
+                  <CloseIcon mr={2} /> Cancel
+                </Button>
+              </Flex>
+            </VStack>
+          ) : (
+            <>
+              <IconButton
+                aria-label="Edit"
+                icon={<EditIcon />}
+                size="sm"
+                onClick={() => handleEdit(index)}
+                position="absolute"
+                top={2}
+                right={2}
+              />
+              <VStack align="stretch" spacing={2}>
+                <Text fontWeight="bold">{experience.title}</Text>
+                <Text>{experience.company}</Text>
+                <Text>{`${experience.start_date} - ${experience.end_date}`}</Text>
+                <Text fontWeight="bold" mt={2}>Accomplishments:</Text>
+                <VStack align="stretch" pl={4}>
+                  {experience.accomplishments.map((accomplishment, accIndex) => (
+                    <Text key={accIndex}>• {accomplishment}</Text>
+                  ))}
+                </VStack>
+              </VStack>
+            </>
+          )}
+        </Box>
+      ))}
+    </VStack>
+  );
+};
+
+export default WorkExperienceDisplay;
+import React, { useState, useEffect } from "react";
+import {
+  Box,
+  Text,
+  IconButton,
+  Flex,
+  Textarea,
+  Button,
+  useToast,
+  VStack,
+} from "@chakra-ui/react";
+import { EditIcon, CheckIcon, CloseIcon } from "@chakra-ui/icons";
+import { CoverLetterParagraphPublic } from "../../client/models";
+import { UserComparisonServices } from "../../client/services";
+
+interface CoverLetterParagraphsProps {
+  paragraphs: CoverLetterParagraphPublic[] | undefined;
+  onUpdate: () => void;
+}
+
+const CoverLetterParagraph: React.FC<CoverLetterParagraphsProps> = ({ paragraphs, onUpdate }) => {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedParagraphs, setEditedParagraphs] = useState<CoverLetterParagraphPublic[]>([]);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (paragraphs) {
+      setEditedParagraphs(paragraphs);
+    }
+  }, [paragraphs]);
+
+  const handleEdit = (index: number) => {
+    setEditingIndex(index);
+  };
+
+  const handleSave = async (index: number) => {
+    try {
+      await UserComparisonServices.editCoverLetterParagraph({
+        newCoverLetterParagraph: editedParagraphs[index]
+      });
+      toast({
+        title: "Cover Letter Paragraph updated",
+        description: `Paragraph ${index + 1} has been successfully updated.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setEditingIndex(null);
+      onUpdate();
+    } catch (error) {
+      console.error("Error updating cover letter paragraph:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update cover letter paragraph",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleCancel = (index: number) => {
+    if (paragraphs) {
+      setEditedParagraphs(prevParagraphs => {
+        const newParagraphs = [...prevParagraphs];
+        newParagraphs[index] = paragraphs[index];
+        return newParagraphs;
+      });
+    }
+    setEditingIndex(null);
+  };
+
+  const handleChange = (index: number, newText: string) => {
+    setEditedParagraphs(prevParagraphs => {
+      const newParagraphs = [...prevParagraphs];
+      newParagraphs[index] = { ...newParagraphs[index], paragraph_text: newText };
+      return newParagraphs;
+    });
+  };
+
+  if (!paragraphs || paragraphs.length === 0) {
+    return <Box>No cover letter paragraphs available.</Box>;
+  }
+
+  return (
+    <VStack align="stretch" spacing={4}>
+      {editedParagraphs.map((paragraph, index) => (
+        <Box key={paragraph.id} p={4} border="1px solid #ccc" borderRadius="md" position="relative">
+          {editingIndex === index ? (
+            <>
+              <Textarea
+                value={paragraph.paragraph_text}
+                onChange={(e) => handleChange(index, e.target.value)}
+                rows={4}
+                mb={3}
+              />
+              <Flex justify="flex-end">
+                <Button onClick={() => handleSave(index)} colorScheme="green" mr={2}>
+                  <CheckIcon mr={2} /> Save
+                </Button>
+                <Button onClick={() => handleCancel(index)} colorScheme="red">
+                  <CloseIcon mr={2} /> Cancel
+                </Button>
+              </Flex>
+            </>
+          ) : (
+            <>
+              <IconButton
+                aria-label="Edit"
+                icon={<EditIcon />}
+                size="sm"
+                onClick={() => handleEdit(index)}
+                position="absolute"
+                top={2}
+                right={2}
+              />
+              <Text fontWeight="bold" mb={2}>Paragraph {paragraph.paragraph_number}</Text>
+              <Text>{paragraph.paragraph_text}</Text>
+            </>
+          )}
+        </Box>
+      ))}
+    </VStack>
+  );
+};
+
+export default CoverLetterParagraph;
+import React, { useEffect, useState } from "react";
+import { Container, Flex, Box, Text } from "@chakra-ui/react";
+import ComparisonList from "./ComparisonList";
+import { UserComparisonServices } from "../../client/services";
+import { UserJobPostingComparison, UserJobPostingComparisons } from "../../client/models";
+import ComparisonDetails from "./ComparisonDetails";
+
+const MainLayout: React.FC = () => {
+  const [jobComparisons, setJobComparisons] = useState<UserJobPostingComparisons | null>(null);
+  const [selectedJobComparison, setSelectedJobComparison] = useState<UserJobPostingComparison | null>(null);
+
+  useEffect(() => {
+    const fetchComparisons = async () => {
+      try {
+        const response = await UserComparisonServices.getUserComparisons();
+        setJobComparisons(response);
+      } catch (error) {
+        console.error("Error fetching job comparisons:", error);
+      }
+    };
+
+    fetchComparisons();
+  }, []);
+
+  const handleJobComparisonSelect = (comparison: UserJobPostingComparison): void => {
+    const fetchJobDetails = async () => {
+      try {
+        const response = await UserComparisonServices.getUserComparison({
+          comparison_id: comparison.id,
+          job_posting_id: null
+        });
+        setSelectedJobComparison(response as UserJobPostingComparison);
+      } catch (error) {
+        console.error("Error fetching job comparison:", error);
+      }
+    };
+    fetchJobDetails();
+  };
+
+  const handleComparisonUpdate = (updatedComparison: UserJobPostingComparison) => {
+    setSelectedJobComparison(updatedComparison);
+    // Also update the comparison in the list if necessary
+    if (jobComparisons) {
+      const updatedComparisons = {
+        ...jobComparisons,
+        data: jobComparisons.data.map(comp =>
+          comp.id === updatedComparison.id ? updatedComparison : comp
+        )
+      };
+      setJobComparisons(updatedComparisons);
+    }
+  };
+
+  return (
+    <Container maxW="full">
+      <Flex height="100vh">
+        <Box width="20%" overflowY="scroll" borderRight="1px solid #ccc">
+          {jobComparisons && (
+            <ComparisonList jobComparisons={jobComparisons} onComparisonSelect={handleJobComparisonSelect} />
+          )}
+        </Box>
+        <Box width="80%" p={2}>
+          {selectedJobComparison ? (
+            <ComparisonDetails
+              comparison={selectedJobComparison}
+              onComparisonUpdate={handleComparisonUpdate}
+            />
+          ) : (
+            <Text>Select a job to see details</Text>
+          )}
+        </Box>
+      </Flex>
+    </Container>
+  );
+};
+
+export default MainLayout;
+// import {
+//   Button,
+//   Checkbox,
+//   Flex,
+//   FormControl,
+//   FormErrorMessage,
+//   FormLabel,
+//   Input,
+//   Modal,
+//   ModalBody,
+//   ModalCloseButton,
+//   ModalContent,
+//   ModalFooter,
+//   ModalHeader,
+//   ModalOverlay,
+// } from "@chakra-ui/react"
+// import { useMutation, useQueryClient } from "@tanstack/react-query"
+// import { type SubmitHandler, useForm } from "react-hook-form"
+//
+// import {
+//   type ApiError,
+//   type UserPublic,
+//   type UserUpdate,
+//   UsersService,
+// } from "../../client"
+// import useCustomToast from "../../hooks/useCustomToast"
+// import { emailPattern } from "../../utils"
+//
+// interface EditUserProps {
+//   user: UserPublic
+//   isOpen: boolean
+//   onClose: () => void
+// }
+//
+// interface UserUpdateForm extends UserUpdate {
+//   confirm_password: string
+// }
+//
+// const EditUser = ({ user, isOpen, onClose }: EditUserProps) => {
+//   const queryClient = useQueryClient()
+//   const showToast = useCustomToast()
+//
+//   const {
+//     register,
+//     handleSubmit,
+//     reset,
+//     getValues,
+//     formState: { errors, isSubmitting, isDirty },
+//   } = useForm<UserUpdateForm>({
+//     mode: "onBlur",
+//     criteriaMode: "all",
+//     defaultValues: user,
+//   })
+//
+//   const mutation = useMutation({
+//     mutationFn: (data: UserUpdateForm) =>
+//       UsersService.updateUser({ userId: user.id, requestBody: data }),
+//     onSuccess: () => {
+//       showToast("Success!", "User updated successfully.", "success")
+//       onClose()
+//     },
+//     onError: (err: ApiError) => {
+//       const errDetail = (err.body as any)?.detail
+//       showToast("Something went wrong.", `${errDetail}`, "error")
+//     },
+//     onSettled: () => {
+//       queryClient.invalidateQueries({ queryKey: ["users"] })
+//     },
+//   })
+//
+//   const onSubmit: SubmitHandler<UserUpdateForm> = async (data) => {
+//     if (data.password === "") {
+//       data.password = undefined
+//     }
+//     mutation.mutate(data)
+//   }
+//
+//   const onCancel = () => {
+//     reset()
+//     onClose()
+//   }
+//
+//   return (
+//     <>
+//       <Modal
+//         isOpen={isOpen}
+//         onClose={onClose}
+//         size={{ base: "sm", md: "md" }}
+//         isCentered
+//       >
+//         <ModalOverlay />
+//         <ModalContent as="form" onSubmit={handleSubmit(onSubmit)}>
+//           <ModalHeader>Edit User</ModalHeader>
+//           <ModalCloseButton />
+//           <ModalBody pb={6}>
+//             <FormControl isInvalid={!!errors.email}>
+//               <FormLabel htmlFor="email">Email</FormLabel>
+//               <Input
+//                 id="email"
+//                 {...register("email", {
+//                   required: "Email is required",
+//                   pattern: emailPattern,
+//                 })}
+//                 placeholder="Email"
+//                 type="email"
+//               />
+//               {errors.email && (
+//                 <FormErrorMessage>{errors.email.message}</FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <FormControl mt={4}>
+//               <FormLabel htmlFor="name">Full name</FormLabel>
+//               <Input id="name" {...register("full_name")} type="text" />
+//             </FormControl>
+//             <FormControl mt={4} isInvalid={!!errors.password}>
+//               <FormLabel htmlFor="password">Set Password</FormLabel>
+//               <Input
+//                 id="password"
+//                 {...register("password", {
+//                   minLength: {
+//                     value: 8,
+//                     message: "Password must be at least 8 characters",
+//                   },
+//                 })}
+//                 placeholder="Password"
+//                 type="password"
+//               />
+//               {errors.password && (
+//                 <FormErrorMessage>{errors.password.message}</FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <FormControl mt={4} isInvalid={!!errors.confirm_password}>
+//               <FormLabel htmlFor="confirm_password">Confirm Password</FormLabel>
+//               <Input
+//                 id="confirm_password"
+//                 {...register("confirm_password", {
+//                   validate: (value) =>
+//                     value === getValues().password ||
+//                     "The passwords do not match",
+//                 })}
+//                 placeholder="Password"
+//                 type="password"
+//               />
+//               {errors.confirm_password && (
+//                 <FormErrorMessage>
+//                   {errors.confirm_password.message}
+//                 </FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <Flex>
+//               <FormControl mt={4}>
+//                 <Checkbox {...register("is_superuser")} colorScheme="teal">
+//                   Is superuser?
+//                 </Checkbox>
+//               </FormControl>
+//               <FormControl mt={4}>
+//                 <Checkbox {...register("is_active")} colorScheme="teal">
+//                   Is active?
+//                 </Checkbox>
+//               </FormControl>
+//             </Flex>
+//           </ModalBody>
+//
+//           <ModalFooter gap={3}>
+//             <Button
+//               variant="primary"
+//               type="submit"
+//               isLoading={isSubmitting}
+//               isDisabled={!isDirty}
+//             >
+//               Save
+//             </Button>
+//             <Button onClick={onCancel}>Cancel</Button>
+//           </ModalFooter>
+//         </ModalContent>
+//       </Modal>
+//     </>
+//   )
+// }
+//
+// export default EditUser
+// import {
+//   Button,
+//   Checkbox,
+//   Flex,
+//   FormControl,
+//   FormErrorMessage,
+//   FormLabel,
+//   Input,
+//   Modal,
+//   ModalBody,
+//   ModalCloseButton,
+//   ModalContent,
+//   ModalFooter,
+//   ModalHeader,
+//   ModalOverlay,
+// } from "@chakra-ui/react"
+// import { useMutation, useQueryClient } from "@tanstack/react-query"
+// import { type SubmitHandler, useForm } from "react-hook-form"
+//
+// import { type UserCreate, UsersService } from "../../client"
+// import type { ApiError } from "../../client/core/ApiError"
+// import useCustomToast from "../../hooks/useCustomToast"
+// import { emailPattern } from "../../utils"
+//
+// interface AddUserProps {
+//   isOpen: boolean
+//   onClose: () => void
+// }
+//
+// interface UserCreateForm extends UserCreate {
+//   confirm_password: string
+// }
+//
+// const AddUser = ({ isOpen, onClose }: AddUserProps) => {
+//   const queryClient = useQueryClient()
+//   const showToast = useCustomToast()
+//   const {
+//     register,
+//     handleSubmit,
+//     reset,
+//     getValues,
+//     formState: { errors, isSubmitting },
+//   } = useForm<UserCreateForm>({
+//     mode: "onBlur",
+//     criteriaMode: "all",
+//     defaultValues: {
+//       email: "",
+//       full_name: "",
+//       password: "",
+//       confirm_password: "",
+//       is_superuser: false,
+//       is_active: false,
+//     },
+//   })
+//
+//   const mutation = useMutation({
+//     mutationFn: (data: UserCreate) =>
+//       UsersService.createUser({ requestBody: data }),
+//     onSuccess: () => {
+//       showToast("Success!", "User created successfully.", "success")
+//       reset()
+//       onClose()
+//     },
+//     onError: (err: ApiError) => {
+//       const errDetail = (err.body as any)?.detail
+//       showToast("Something went wrong.", `${errDetail}`, "error")
+//     },
+//     onSettled: () => {
+//       queryClient.invalidateQueries({ queryKey: ["users"] })
+//     },
+//   })
+//
+//   const onSubmit: SubmitHandler<UserCreateForm> = (data) => {
+//     mutation.mutate(data)
+//   }
+//
+//   return (
+//     <>
+//       <Modal
+//         isOpen={isOpen}
+//         onClose={onClose}
+//         size={{ base: "sm", md: "md" }}
+//         isCentered
+//       >
+//         <ModalOverlay />
+//         <ModalContent as="form" onSubmit={handleSubmit(onSubmit)}>
+//           <ModalHeader>Add User</ModalHeader>
+//           <ModalCloseButton />
+//           <ModalBody pb={6}>
+//             <FormControl isRequired isInvalid={!!errors.email}>
+//               <FormLabel htmlFor="email">Email</FormLabel>
+//               <Input
+//                 id="email"
+//                 {...register("email", {
+//                   required: "Email is required",
+//                   pattern: emailPattern,
+//                 })}
+//                 placeholder="Email"
+//                 type="email"
+//               />
+//               {errors.email && (
+//                 <FormErrorMessage>{errors.email.message}</FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <FormControl mt={4} isInvalid={!!errors.full_name}>
+//               <FormLabel htmlFor="name">Full name</FormLabel>
+//               <Input
+//                 id="name"
+//                 {...register("full_name")}
+//                 placeholder="Full name"
+//                 type="text"
+//               />
+//               {errors.full_name && (
+//                 <FormErrorMessage>{errors.full_name.message}</FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <FormControl mt={4} isRequired isInvalid={!!errors.password}>
+//               <FormLabel htmlFor="password">Set Password</FormLabel>
+//               <Input
+//                 id="password"
+//                 {...register("password", {
+//                   required: "Password is required",
+//                   minLength: {
+//                     value: 8,
+//                     message: "Password must be at least 8 characters",
+//                   },
+//                 })}
+//                 placeholder="Password"
+//                 type="password"
+//               />
+//               {errors.password && (
+//                 <FormErrorMessage>{errors.password.message}</FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <FormControl
+//               mt={4}
+//               isRequired
+//               isInvalid={!!errors.confirm_password}
+//             >
+//               <FormLabel htmlFor="confirm_password">Confirm Password</FormLabel>
+//               <Input
+//                 id="confirm_password"
+//                 {...register("confirm_password", {
+//                   required: "Please confirm your password",
+//                   validate: (value) =>
+//                     value === getValues().password ||
+//                     "The passwords do not match",
+//                 })}
+//                 placeholder="Password"
+//                 type="password"
+//               />
+//               {errors.confirm_password && (
+//                 <FormErrorMessage>
+//                   {errors.confirm_password.message}
+//                 </FormErrorMessage>
+//               )}
+//             </FormControl>
+//             <Flex mt={4}>
+//               <FormControl>
+//                 <Checkbox {...register("is_superuser")} colorScheme="teal">
+//                   Is superuser?
+//                 </Checkbox>
+//               </FormControl>
+//               <FormControl>
+//                 <Checkbox {...register("is_active")} colorScheme="teal">
+//                   Is active?
+//                 </Checkbox>
+//               </FormControl>
+//             </Flex>
+//           </ModalBody>
+//           <ModalFooter gap={3}>
+//             <Button variant="primary" type="submit" isLoading={isSubmitting}>
+//               Save
+//             </Button>
+//             <Button onClick={onClose}>Cancel</Button>
+//           </ModalFooter>
+//         </ModalContent>
+//       </Modal>
+//     </>
+//   )
+// }
+//
+// export default AddUser
+import {
+  Box,
+  Button,
+  Container,
+  Flex,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Heading,
+  Input,
+  Text,
+  Textarea,
+  useColorModeValue,
+} from "@chakra-ui/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import {
+  type ApiError,
+  type UserPublicMe,
+  type UserUpdateMe,
+  UsersService,
+} from "../../client"
+import useAuth from "../../hooks/useAuth"
+import useCustomToast from "../../hooks/useCustomToast"
+import { emailPattern } from "../../utils"
+
+const UserInformation = () => {
+  const queryClient = useQueryClient()
+  const color = useColorModeValue("inherit", "ui.light")
+  const showToast = useCustomToast()
+  const [editMode, setEditMode] = useState(false)
+  const { user: currentUser } = useAuth()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    getValues,
+    formState: { isSubmitting, errors, isDirty },
+  } = useForm<UserPublicMe>({
+    mode: "onBlur",
+    criteriaMode: "all",
+    defaultValues: {
+      name: currentUser?.name,
+      username: currentUser?.username,
+      additional_info: currentUser?.additional_info,
+    },
+  })
+
+  const toggleEditMode = () => {
+    setEditMode(!editMode)
+  }
+
+  const mutation = useMutation({
+    mutationFn: (data: UserUpdateMe) =>
+      UsersService.updateUserMe({ requestBody: data }),
+    onSuccess: () => {
+      showToast("Success!", "User updated successfully.", "success")
+    },
+    onError: (err: ApiError) => {
+      const errDetail = (err.body as any)?.detail
+      showToast("Something went wrong.", `${errDetail}`, "error")
+    },
+    onSettled: () => {
+      // TODO: can we do just one call now?
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+    },
+  })
+
+  const onSubmit: SubmitHandler<UserUpdateMe> = async (data) => {
+    mutation.mutate(data)
+  }
+
+  const onCancel = () => {
+    reset()
+    toggleEditMode()
+  }
+
+  return (
+    <>
+      <Container maxW="full" as="form" onSubmit={handleSubmit(onSubmit)}>
+        <Heading size="sm" py={4}>
+          User Information
+        </Heading>
+        <Box w={{ sm: "full", md: "50%" }}>
+          <FormControl>
+            <FormLabel color={color} htmlFor="name">
+              Full name
+            </FormLabel>
+            {editMode ? (
+              <Input
+                id="name"
+                {...register("name", { maxLength: 30 })}
+                type="text"
+                size="md"
+              />
+            ) : (
+              <Text
+                size="md"
+                py={2}
+                color={!currentUser?.name ? "ui.dim" : "inherit"}
+              >
+                {currentUser?.name || "N/A"}
+              </Text>
+            )}
+          </FormControl>
+          <FormControl mt={4} isInvalid={!!errors.username}>
+            <FormLabel color={color} htmlFor="email">
+              Username
+            </FormLabel>
+            {editMode ? (
+              <Input
+                id="username"
+                {...register("username", {
+                  required: "Username is required",
+                  pattern: emailPattern,
+                })}
+                type="username"
+                size="md"
+              />
+            ) : (
+              <Text size="md" py={2}>
+                {currentUser?.username}
+              </Text>
+            )}
+            {errors.username && (
+              <FormErrorMessage>{errors.username.message}</FormErrorMessage>
+            )}
+          </FormControl>
+          <FormControl>
+            <FormLabel color={color} htmlFor="additional_info">
+              Additional information
+            </FormLabel>
+            {editMode ? (
+              <Textarea
+                id="additional_info"
+                {...register("additional_info", { maxLength: 1000 })}
+                size="md"
+              />
+            ) : (
+              <Text
+                size="md"
+                py={2}
+                color={!currentUser?.additional_info ? "ui.dim" : "inherit"}
+              >
+                {currentUser?.additional_info || "N/A"}
+              </Text>
+            )}
+          </FormControl>
+
+
+          <Flex mt={4} gap={3}>
+            <Button
+              variant="primary"
+              onClick={toggleEditMode}
+              type={editMode ? "button" : "submit"}
+              isLoading={editMode ? isSubmitting : false}
+              isDisabled={editMode ? !isDirty || !getValues("username") : false}
+            >
+              {editMode ? "Save" : "Edit"}
+            </Button>
+            {editMode && (
+              <Button onClick={onCancel} isDisabled={isSubmitting}>
+                Cancel
+              </Button>
+            )}
+          </Flex>
+        </Box>
+      </Container>
+    </>
+  )
+}
+
+export default UserInformation
+import React, { useState, useEffect } from 'react';
+import { Button, FormControl, FormLabel, Select, Slider, SliderTrack, SliderFilledTrack, SliderThumb, useToast, Text, Box, Heading } from '@chakra-ui/react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { UsersService, ModelNamesService } from '../../client';
+
+
+const ParseResume: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [model, setModel] = useState<string>('GPT4_O');
+  const [temperature, setTemperature] = useState<number>(0.5);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [modelOptions, setModelOptions] = useState<{ llm_alias: string, llm_value: string }[]>([]);
+
+  const toast = useToast();
+
+  useEffect(() => {
+    const fetchModelNames = async () => {
+      try {
+        const response = await ModelNamesService.getModelNames();
+        setModelOptions(response);
+        if (response.length > 0) {
+          console.log(response)
+          setModel(response[0].llm_alias); // Set the first option as the default
+
+        }
+      } catch (error) {
+        console.error("Error fetching model names:", error);
+        toast({
+          title: 'Error!',
+          description: 'Failed to fetch model names.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    };
+
+    fetchModelNames();
+  }, [toast]);
+
+
+  const mutation = useMutation({
+    mutationFn: () => UsersService.parseResume({
+      requestBody: {
+        name: model,
+        temperature: temperature,
+      },
+    }),
+    onMutate: () => {
+      setIsLoading(true);
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Success!',
+        description: 'Resume parsed successfully.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error!',
+        description: 'Failed to parse resume.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+      setIsLoading(false);
+
+    },
+
+  });
+
+  const handleParse = () => {
+    mutation.mutate();
+  }
+  return (
+    <FormControl>
+      <Heading as="h3" size="md" mb={4}>Parse your resume using LLMs</Heading>
+      <FormLabel>Select Model</FormLabel>
+      <Select value={model} onChange={(e) => setModel(e.target.value)}>
+        {modelOptions.map(option => (
+          <option key={option.llm_value} value={option.llm_alias}>{option.llm_alias}</option>
+        ))}
+      </Select>
+      <FormLabel mt={4}>Set Temperature</FormLabel>
+      <Box display="flex" alignItems="center">
+        <Slider
+          defaultValue={0.5}
+          min={0}
+          max={2}
+          step={0.01}
+          value={temperature}
+          onChange={(val) => setTemperature(val)}
+          flex="1"
+          mr={4}
+        >
+          <SliderTrack>
+            <SliderFilledTrack />
+          </SliderTrack>
+          <SliderThumb />
+        </Slider>
+        <Text>{temperature.toFixed(2)}</Text>      </Box>
+      <Box mt={4} display="flex" alignItems="center">
+        <Button onClick={handleParse} isLoading={isLoading} isDisabled={isLoading} mr={4}>Parse Resume</Button>
+      </Box>
+    </FormControl >
+  );
+};
+
+export default ParseResume;
+import {
+  Box,
+  Button,
+  Container,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Heading,
+  Input,
+  useColorModeValue,
+} from "@chakra-ui/react"
+import { useMutation } from "@tanstack/react-query"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import { type ApiError, type UpdatePassword, UsersService } from "../../client"
+import useCustomToast from "../../hooks/useCustomToast"
+import { confirmPasswordRules, passwordRules } from "../../utils"
+
+interface UpdatePasswordForm extends UpdatePassword {
+  confirm_password: string
+}
+
+const ChangePassword = () => {
+  const color = useColorModeValue("inherit", "ui.light")
+  const showToast = useCustomToast()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<UpdatePasswordForm>({
+    mode: "onBlur",
+    criteriaMode: "all",
+  })
+
+  const mutation = useMutation({
+    mutationFn: (data: UpdatePassword) =>
+      UsersService.updatePasswordMe({ requestBody: data }),
+    onSuccess: () => {
+      showToast("Success!", "Password updated.", "success")
+      reset()
+    },
+    onError: (err: ApiError) => {
+      const errDetail = (err.body as any)?.detail
+      showToast("Something went wrong.", `${errDetail}`, "error")
+    },
+  })
+
+  const onSubmit: SubmitHandler<UpdatePasswordForm> = async (data) => {
+    mutation.mutate(data)
+  }
+
+  return (
+    <>
+      <Container maxW="full" as="form" onSubmit={handleSubmit(onSubmit)}>
+        <Heading size="sm" py={4}>
+          Change Password
+        </Heading>
+        <Box w={{ sm: "full", md: "50%" }}>
+          <FormControl isRequired isInvalid={!!errors.current_password}>
+            <FormLabel color={color} htmlFor="current_password">
+              Current password
+            </FormLabel>
+            <Input
+              id="current_password"
+              {...register("current_password")}
+              placeholder="Password"
+              type="password"
+            />
+            {errors.current_password && (
+              <FormErrorMessage>
+                {errors.current_password.message}
+              </FormErrorMessage>
+            )}
+          </FormControl>
+          <FormControl mt={4} isRequired isInvalid={!!errors.new_password}>
+            <FormLabel htmlFor="password">Set Password</FormLabel>
+            <Input
+              id="password"
+              {...register("new_password", passwordRules())}
+              placeholder="Password"
+              type="password"
+            />
+            {errors.new_password && (
+              <FormErrorMessage>{errors.new_password.message}</FormErrorMessage>
+            )}
+          </FormControl>
+          <FormControl mt={4} isRequired isInvalid={!!errors.confirm_password}>
+            <FormLabel htmlFor="confirm_password">Confirm Password</FormLabel>
+            <Input
+              id="confirm_password"
+              {...register("confirm_password", confirmPasswordRules(getValues))}
+              placeholder="Password"
+              type="password"
+            />
+            {errors.confirm_password && (
+              <FormErrorMessage>
+                {errors.confirm_password.message}
+              </FormErrorMessage>
+            )}
+          </FormControl>
+          <Button
+            variant="primary"
+            mt={4}
+            type="submit"
+            isLoading={isSubmitting}
+          >
+            Save
+          </Button>
+        </Box>
+      </Container>
+    </>
+  )
+}
+export default ChangePassword
+import {
+  Button,
+  Container,
+  Heading,
+  Text,
+  useDisclosure,
+} from "@chakra-ui/react"
+
+import DeleteConfirmation from "./DeleteConfirmation"
+
+const DeleteAccount = () => {
+  const confirmationModal = useDisclosure()
+
+  return (
+    <>
+      <Container maxW="full">
+        <Heading size="sm" py={4}>
+          Delete Account
+        </Heading>
+        <Text>
+          Permanently delete your data and everything associated with your
+          account.
+        </Text>
+        <Button variant="danger" mt={4} onClick={confirmationModal.onOpen}>
+          Delete
+        </Button>
+        <DeleteConfirmation
+          isOpen={confirmationModal.isOpen}
+          onClose={confirmationModal.onClose}
+        />
+      </Container>
+    </>
+  )
+}
+export default DeleteAccount
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
+  Button,
+} from "@chakra-ui/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import React from "react"
+import { useForm } from "react-hook-form"
+
+import { type ApiError, type UserPublicMe, UsersService } from "../../client"
+import useAuth from "../../hooks/useAuth"
+import useCustomToast from "../../hooks/useCustomToast"
+
+interface DeleteProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+const DeleteConfirmation = ({ isOpen, onClose }: DeleteProps) => {
+  const queryClient = useQueryClient()
+  const showToast = useCustomToast()
+  const cancelRef = React.useRef<HTMLButtonElement | null>(null)
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm()
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+  const { logout } = useAuth()
+
+  const mutation = useMutation({
+    mutationFn: (id: number) => UsersService.deleteUser({ userId: id }),
+    onSuccess: () => {
+      showToast(
+        "Success",
+        "Your account has been successfully deleted.",
+        "success",
+      )
+      logout()
+      onClose()
+    },
+    onError: (err: ApiError) => {
+      const errDetail = (err.body as any)?.detail
+      showToast("Something went wrong.", `${errDetail}`, "error")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+    },
+  })
+
+  const onSubmit = async () => {
+    mutation.mutate(currentUser!.id)
+  }
+
+  return (
+    <>
+      <AlertDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        leastDestructiveRef={cancelRef}
+        size={{ base: "sm", md: "md" }}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent as="form" onSubmit={handleSubmit(onSubmit)}>
+            <AlertDialogHeader>Confirmation Required</AlertDialogHeader>
+
+            <AlertDialogBody>
+              All your account data will be{" "}
+              <strong>permanently deleted.</strong> If you are sure, please
+              click <strong>"Confirm"</strong> to proceed. This action cannot be
+              undone.
+            </AlertDialogBody>
+
+            <AlertDialogFooter gap={3}>
+              <Button variant="danger" type="submit" isLoading={isSubmitting}>
+                Confirm
+              </Button>
+              <Button
+                ref={cancelRef}
+                onClick={onClose}
+                isDisabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </>
+  )
+}
+
+export default DeleteConfirmation
+import {
+  Badge,
+  Container,
+  Heading,
+  Radio,
+  RadioGroup,
+  Stack,
+  useColorMode,
+} from "@chakra-ui/react"
+
+const Appearance = () => {
+  const { colorMode, toggleColorMode } = useColorMode()
+
+  return (
+    <>
+      <Container maxW="full">
+        <Heading size="sm" py={4}>
+          Appearance
+        </Heading>
+        <RadioGroup onChange={toggleColorMode} value={colorMode}>
+          <Stack>
+            {/* TODO: Add system default option */}
+            <Radio value="light" colorScheme="teal">
+              Light mode
+              <Badge ml="1" colorScheme="teal">
+                Default
+              </Badge>
+            </Radio>
+            <Radio value="dark" colorScheme="teal">
+              Dark mode
+            </Radio>
+          </Stack>
+        </RadioGroup>
+      </Container>
+    </>
+  )
+}
+export default Appearance
+import {
+  Heading,
+  Button,
+  Container,
+  Flex,
+  Box,
+} from "@chakra-ui/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import {
+  type ApiError,
+  type UserPublicMe,
+  type UserUpdateMe,
+  UsersService,
+} from "../../client"
+import useAuth from "../../hooks/useAuth"
+import useCustomToast from "../../hooks/useCustomToast"
+import ParseResume from "../UserSettings/ParseResume"
+import { JsonDisplay } from "../Common/JsonDisplay"
+import { PdfDisplay } from "../Common/PdfDisplay"
+import { PdfUpload } from "../Common/PdfUpload"
+
+const UserCV = () => {
+  const queryClient = useQueryClient()
+  const showToast = useCustomToast()
+  const [editMode, setEditMode] = useState(false)
+  const { user: currentUser } = useAuth()
+  const {
+    handleSubmit,
+    reset,
+    getValues,
+    formState: { isSubmitting, isDirty },
+  } = useForm<UserPublicMe>({
+    mode: "onBlur",
+    criteriaMode: "all",
+    defaultValues: {
+      resume: currentUser?.resume,
+      parsed_work_experiences: currentUser?.parsed_work_experiences,
+      parsed_educations: currentUser?.parsed_educations,
+      parsed_languages: currentUser?.parsed_languages,
+      parsed_skills: currentUser?.parsed_skills,
+      additional_info: currentUser?.additional_info,
+
+    },
+  })
+
+  const toggleEditMode = () => {
+    setEditMode(!editMode)
+  }
+
+  const mutation = useMutation({
+    mutationFn: (data: UserUpdateMe) =>
+      UsersService.updateUserMe({ requestBody: data }),
+    onSuccess: () => {
+      showToast("Success!", "User updated successfully.", "success")
+    },
+    onError: (err: ApiError) => {
+      const errDetail = (err.body as any)?.detail
+      showToast("Something went wrong.", `${errDetail}`, "error")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+    },
+  })
+
+  const onSubmit: SubmitHandler<UserUpdateMe> = async (data) => {
+    mutation.mutate(data)
+  }
+
+  const onCancel = () => {
+    reset()
+    toggleEditMode()
+  }
+
+  return (
+    <>
+      <Container maxW="full" as="form" onSubmit={handleSubmit(onSubmit)}>
+        <Flex>
+
+          <Box flex="1">
+            <Heading as="h3" size="lg" mb={4}>Upload Your Resume</Heading>
+            <PdfUpload />
+          </Box>
+          <Box flex="1">
+            <Heading as="h3" size="lg" mb={4}></Heading>
+            <ParseResume />
+          </Box>
+        </Flex>
+        <PdfDisplay base64String={currentUser?.resume ?? null} />
+
+
+        <JsonDisplay data={JSON.stringify(currentUser?.parsed_work_experiences)} title="Work Experiences" />
+        <JsonDisplay data={JSON.stringify(currentUser?.parsed_educations)} title="Educations" />
+        <JsonDisplay data={JSON.stringify(currentUser?.parsed_languages)} title="Languages" />
+        <JsonDisplay data={JSON.stringify(currentUser?.parsed_skills)} title="Skills" />
+
+
+        <Flex mt={4} gap={3}>
+          <Button
+            variant="primary"
+            onClick={toggleEditMode}
+            type={editMode ? "button" : "submit"}
+            isLoading={editMode ? isSubmitting : false}
+            isDisabled={editMode ? !isDirty || !getValues("username") : false}
+          >
+            {editMode ? "Save" : "Edit"}
+          </Button>
+          {editMode && (
+            <Button onClick={onCancel} isDisabled={isSubmitting}>
+              Cancel
+            </Button>
+          )}
+        </Flex>
+      </Container>
+    </>
+  )
+}
+
+export default UserCV 
+// import { Button, Flex, Icon, useDisclosure } from "@chakra-ui/react"
+// import { FaPlus } from "react-icons/fa"
+//
+// import AddUser from "../Admin/AddUser"
+//
+// interface NavbarProps {
+//   type: string
+// }
+//
+// const Navbar = ({ type }: NavbarProps) => {
+//   const addUserModal = useDisclosure()
+//
+//   return (
+//     <>
+//       <Flex py={8} gap={4}>
+//         {/* TODO: Complete search functionality */}
+//         {/* <InputGroup w={{ base: '100%', md: 'auto' }}>
+//                     <InputLeftElement pointerEvents='none'>
+//                         <Icon as={FaSearch} color='ui.dim' />
+//                     </InputLeftElement>
+//                     <Input type='text' placeholder='Search' fontSize={{ base: 'sm', md: 'inherit' }} borderRadius='8px' />
+//                 </InputGroup> */}
+//         <Button
+//           variant="primary"
+//           gap={1}
+//           fontSize={{ base: "sm", md: "inherit" }}
+//           onClick={type === "User" ? addUserModal.onOpen : addUserModal.onOpen}
+//         >
+//           <Icon as={FaPlus} /> Add {type}
+//         </Button>
+//         <AddUser isOpen={addUserModal.isOpen} onClose={addUserModal.onClose} />
+//       </Flex>
+//     </>
+//   )
+// }
+//
+// export default Navbar
+import { Box, Flex, Icon, Text, useColorModeValue } from "@chakra-ui/react"
+import { useQueryClient } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
+import { FiBriefcase, FiHome, FiSettings, FiUsers } from "react-icons/fi"
+
+import type { UserPublicMe } from "../../client"
+
+const items = [
+  { icon: FiHome, title: "Dashboard", path: "/" },
+  { icon: FiBriefcase, title: "Job Postings", path: "/jobpostings" },
+  { icon: FiUsers, title: "Applications", path: "/comparisons" },
+  { icon: FiSettings, title: "User Settings", path: "/settings" },
+]
+
+interface SidebarItemsProps {
+  onClose?: () => void
+}
+
+const SidebarItems = ({ onClose }: SidebarItemsProps) => {
+  const queryClient = useQueryClient()
+  const textColor = useColorModeValue("ui.main", "ui.light")
+  const bgActive = useColorModeValue("#E2E8F0", "#4A5568")
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+
+  const finalItems = currentUser?.is_superuser
+    ? [...items, { icon: FiUsers, title: "Admin", path: "/admin" }]
+    : items
+
+  const listItems = finalItems.map(({ icon, title, path }) => (
+    <Flex
+      as={Link}
+      to={path}
+      w="100%"
+      p={2}
+      key={title}
+      activeProps={{
+        style: {
+          background: bgActive,
+          borderRadius: "12px",
+        },
+      }}
+      color={textColor}
+      onClick={onClose}
+    >
+      <Icon as={icon} alignSelf="center" />
+      <Text ml={2}>{title}</Text>
+    </Flex>
+  ))
+
+  return (
+    <>
+      <Box>{listItems}</Box>
+    </>
+  )
+}
+
+export default SidebarItems
+// export const Button = ({ onClick, text, loading, disabled }) => {
+//   return (
+//     <button className="submit-btn" onSubmit={onClick} disabled={disabled}>
+//       {!loading ? text : 'loading...'}
+//     </button>
+//   )
+// }
+//
+import {
+  Box,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+} from "@chakra-ui/react"
+import { Link } from "@tanstack/react-router"
+import { FaUserAstronaut } from "react-icons/fa"
+import { FiLogOut, FiUser } from "react-icons/fi"
+
+import useAuth from "../../hooks/useAuth"
+
+const UserMenu = () => {
+  const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    logout()
+  }
+
+  return (
+    <>
+      {/* Desktop */}
+      <Box
+        display={{ base: "none", md: "block" }}
+        position="fixed"
+        top={4}
+        right={4}
+      >
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Options"
+            icon={<FaUserAstronaut color="white" fontSize="18px" />}
+            bg="ui.main"
+            isRound
+          />
+          <MenuList>
+            <MenuItem icon={<FiUser fontSize="18px" />} as={Link} to="settings">
+              My profile
+            </MenuItem>
+            <MenuItem
+              icon={<FiLogOut fontSize="18px" />}
+              onClick={handleLogout}
+              color="ui.danger"
+              fontWeight="bold"
+            >
+              Log out
+            </MenuItem>
+          </MenuList>
+        </Menu>
+      </Box>
+    </>
+  )
+}
+
+export default UserMenu
+import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
+  Button,
+} from "@chakra-ui/react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import React from "react"
+import { useForm } from "react-hook-form"
+
+import { UsersService } from "../../client"
+import useCustomToast from "../../hooks/useCustomToast"
+
+interface DeleteProps {
+  type: string
+  id: number
+  isOpen: boolean
+  onClose: () => void
+}
+
+const Delete = ({ type, id, isOpen, onClose }: DeleteProps) => {
+  const queryClient = useQueryClient()
+  const showToast = useCustomToast()
+  const cancelRef = React.useRef<HTMLButtonElement | null>(null)
+  const {
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm()
+
+  const deleteEntity = async (id: number) => {
+    if (type === "User") {
+      await UsersService.deleteUser({ userId: id })
+    } else {
+      throw new Error(`Unexpected type: ${type}`)
+    }
+  }
+
+  const mutation = useMutation({
+    mutationFn: deleteEntity,
+    onSuccess: () => {
+      showToast(
+        "Success",
+        `The ${type.toLowerCase()} was deleted successfully.`,
+        "success",
+      )
+      onClose()
+    },
+    onError: () => {
+      showToast(
+        "An error occurred.",
+        `An error occurred while deleting the ${type.toLowerCase()}.`,
+        "error",
+      )
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: [type === "Item" ? "items" : "users"],
+      })
+    },
+  })
+
+  const onSubmit = async () => {
+    mutation.mutate(id)
+  }
+
+  return (
+    <>
+      <AlertDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        leastDestructiveRef={cancelRef}
+        size={{ base: "sm", md: "md" }}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent as="form" onSubmit={handleSubmit(onSubmit)}>
+            <AlertDialogHeader>Delete {type}</AlertDialogHeader>
+
+            <AlertDialogBody>
+              {type === "User" && (
+                <span>
+                  All items associated with this user will also be{" "}
+                  <strong>permantly deleted. </strong>
+                </span>
+              )}
+              Are you sure? You will not be able to undo this action.
+            </AlertDialogBody>
+
+            <AlertDialogFooter gap={3}>
+              <Button variant="danger" type="submit" isLoading={isSubmitting}>
+                Delete
+              </Button>
+              <Button
+                ref={cancelRef}
+                onClick={onClose}
+                isDisabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </>
+  )
+}
+
+export default Delete
+import { Box, Code, Heading, useColorModeValue } from '@chakra-ui/react';
+
+type JsonDisplayProps = {
+  data: string;
+  title?: string;
+};
+
+export const JsonDisplay = ({ data, title }: JsonDisplayProps) => {
+  // Define colors that adapt to light or dark mode
+  const boxBgColor = useColorModeValue('gray.100', 'gray.700');
+  const textColor = useColorModeValue('black', 'white');
+
+  return (
+    <>
+      {title && (
+        <Heading size="sm" py={4}>
+          {title}
+        </Heading>
+      )}
+      <Box
+        p={4}
+        bg={boxBgColor} // Dynamically set background color
+        color={textColor} // Dynamically set text color
+        borderRadius="md"
+        overflowX="auto"
+      >
+        <Code p={2} w="full" display="block" whiteSpace="pre-wrap">
+          {JSON.stringify(JSON.parse(data), null, 2)}
+        </Code>
+      </Box>
+    </>
+  );
+};
+import React, { useEffect, useState } from 'react';
+import { FormControl, FormLabel, Select, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Box, Text, useToast } from '@chakra-ui/react';
+import { ModelNamesService } from '../../client';
+
+interface ModelTemperatureSelectorProps {
+  model: string;
+  setModel: (model: string) => void;
+  temperature: number;
+  setTemperature: (temperature: number) => void;
+}
+
+const ModelTemperatureSelector: React.FC<ModelTemperatureSelectorProps> = ({ model, setModel, temperature, setTemperature }) => {
+  const [modelOptions, setModelOptions] = useState<{ llm_alias: string }[]>([]);
+  const toast = useToast();
+
+  useEffect(() => {
+    const fetchModelNames = async () => {
+      try {
+        const response = await ModelNamesService.getModelNames();
+        setModelOptions(response.map(model => ({ llm_alias: model.llm_alias })));
+        if (response.length > 0) {
+          setModel(response[0].llm_alias); // Set the first option as the default
+        }
+      } catch (error) {
+        console.error('Error fetching model names:', error);
+        toast({
+          title: 'Error!',
+          description: 'Failed to fetch model names.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
+    };
+
+    fetchModelNames();
+  }, [toast, setModel]);
+
+  return (
+    <FormControl mb={4}>
+      <FormLabel>Select Model</FormLabel>
+      <Select value={model} onChange={(e) => setModel(e.target.value)}>
+        {modelOptions.map(option => (
+          <option key={option.llm_alias} value={option.llm_alias}>{option.llm_alias}</option>
+        ))}
+      </Select>
+      <FormLabel mt={4}>Set Temperature</FormLabel>
+      <Box display="flex" alignItems="center">
+        <Slider
+          defaultValue={0.5}
+          min={0}
+          max={2}
+          step={0.01}
+          value={temperature}
+          onChange={(val) => setTemperature(val)}
+          flex="1"
+          mr={4}
+        >
+          <SliderTrack>
+            <SliderFilledTrack />
+          </SliderTrack>
+          <SliderThumb />
+        </Slider>
+        <Text>{temperature.toFixed(2)}</Text>
+      </Box>
+    </FormControl>
+  );
+};
+
+export default ModelTemperatureSelector;
+
+import React from 'react';
+import { Worker, Viewer } from '@react-pdf-viewer/core';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import { Button, Box } from '@chakra-ui/react';
+import { DownloadIcon } from '@chakra-ui/icons';
+
+interface PdfDisplayProps {
+  base64String: string | null;
+  fileName?: string; // New prop for custom file name
+}
+
+export const PdfDisplay: React.FC<PdfDisplayProps> = ({ base64String, fileName = 'document.pdf' }) => {
+  const pdfBlob = base64String ? `data:application/pdf;base64,${base64String}` : null;
+
+  const sanitizeFileName = (str: string) => {
+    return str
+      .replace(/[^a-z0-9]/gi, '_') // Replace any character that's not alphanumeric with underscore
+      .replace(/_+/g, '_')         // Replace multiple consecutive underscores with a single one
+      .toLowerCase()               // Convert to lowercase
+      .trim();                     // Remove leading and trailing whitespace
+  };
+
+  const sanitizedFileName = sanitizeFileName(fileName);
+
+
+  const handleDownload = () => {
+    if (pdfBlob) {
+      const link = document.createElement('a');
+      link.href = pdfBlob;
+      link.download = sanitizedFileName; // Use the provided fileName or default to 'document.pdf'
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  return (
+    <Box>
+      <Box mb={4}>
+      </Box>
+      <Box style={{ width: '100%', height: '70vh', border: '1px solid black' }}>
+        {pdfBlob ? (
+          <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+            <Viewer fileUrl={pdfBlob} />
+          </Worker>
+        ) : (
+          <p>No PDF available</p>
+        )}
+      </Box>
+      <Button
+        leftIcon={<DownloadIcon />}
+        onClick={handleDownload}
+        isDisabled={!pdfBlob}
+      >
+        Download {sanitizedFileName} {/* Display the file name in the button text */}
+      </Button>
+    </Box>
+  );
+};
+// import {
+//   Button,
+//   Menu,
+//   MenuButton,
+//   MenuItem,
+//   MenuList,
+//   useDisclosure,
+// } from "@chakra-ui/react"
+// import { BsThreeDotsVertical } from "react-icons/bs"
+// import { FiEdit, FiTrash } from "react-icons/fi"
+//
+// import type { UserPublicMe } from "../../client"
+// // import EditUser from "../Admin/EditUser"
+// import Delete from "./DeleteAlert"
+//
+// interface ActionsMenuProps {
+//   type: string
+//   value: UserPublicMe
+//   disabled?: boolean
+// }
+//
+// const ActionsMenu = ({ type, value, disabled }: ActionsMenuProps) => {
+//   const editUserModal = useDisclosure()
+//   const deleteModal = useDisclosure()
+//
+//   return (
+//     <>
+//       <Menu>
+//         <MenuButton
+//           isDisabled={disabled}
+//           as={Button}
+//           rightIcon={<BsThreeDotsVertical />}
+//           variant="unstyled"
+//         />
+//         <MenuList>
+//           <MenuItem
+//             onClick={editUserModal.onOpen}
+//             icon={<FiEdit fontSize="16px" />}
+//           >
+//             Edit {type}
+//           </MenuItem>
+//           <MenuItem
+//             onClick={deleteModal.onOpen}
+//             icon={<FiTrash fontSize="16px" />}
+//             color="ui.danger"
+//           >
+//             Delete {type}
+//           </MenuItem>
+//         </MenuList>
+//         {type === "User" ? (
+//           <EditUser
+//             user={value as UserPublicMe}
+//             isOpen={editUserModal.isOpen}
+//             onClose={editUserModal.onClose}
+//           />
+//         ) : (
+//           <EditItem
+//             item={value as ItemPublic}
+//             isOpen={editUserModal.isOpen}
+//             onClose={editUserModal.onClose}
+//           />
+//         )}
+//         <Delete
+//           type={type}
+//           id={value.id}
+//           isOpen={deleteModal.isOpen}
+//           onClose={deleteModal.onClose}
+//         />
+//       </Menu>
+//     </>
+//   )
+// }
+//
+// export default ActionsMenu
+import {
+  Box,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerOverlay,
+  Flex,
+  IconButton,
+  Image,
+  Text,
+  useColorModeValue,
+  useDisclosure,
+} from "@chakra-ui/react"
+import { useQueryClient } from "@tanstack/react-query"
+import { FiLogOut, FiMenu } from "react-icons/fi"
+
+import Logo from "../../assets/images/fastapi-logo.svg"
+import type { UserPublicMe } from "../../client"
+import useAuth from "../../hooks/useAuth"
+import SidebarItems from "./SidebarItems"
+
+const Sidebar = () => {
+  const queryClient = useQueryClient()
+  const bgColor = useColorModeValue("ui.light", "ui.dark")
+  const textColor = useColorModeValue("ui.dark", "ui.light")
+  const secBgColor = useColorModeValue("ui.secondary", "ui.darkSlate")
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const { logout } = useAuth()
+
+  const handleLogout = async () => {
+    logout()
+  }
+
+  return (
+    <>
+      {/* Mobile */}
+      <IconButton
+        onClick={onOpen}
+        display={{ base: "flex", md: "none" }}
+        aria-label="Open Menu"
+        position="absolute"
+        fontSize="20px"
+        m={4}
+        icon={<FiMenu />}
+      />
+      <Drawer isOpen={isOpen} placement="left" onClose={onClose}>
+        <DrawerOverlay />
+        <DrawerContent maxW="250px">
+          <DrawerCloseButton />
+          <DrawerBody py={8}>
+            <Flex flexDir="column" justify="space-between">
+              <Box>
+                <Image src={Logo} alt="logo" p={6} />
+                <SidebarItems onClose={onClose} />
+                <Flex
+                  as="button"
+                  onClick={handleLogout}
+                  p={2}
+                  color="ui.danger"
+                  fontWeight="bold"
+                  alignItems="center"
+                >
+                  <FiLogOut />
+                  <Text ml={2}>Log out</Text>
+                </Flex>
+              </Box>
+              {currentUser?.username && (
+                <Text color={textColor} noOfLines={2} fontSize="sm" p={2}>
+                  Logged in as: {currentUser.username}
+                </Text>
+              )}
+            </Flex>
+          </DrawerBody>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Desktop */}
+      <Box
+        bg={bgColor}
+        p={3}
+        h="100vh"
+        position="sticky"
+        top="0"
+        display={{ base: "none", md: "flex" }}
+      >
+        <Flex
+          flexDir="column"
+          justify="space-between"
+          bg={secBgColor}
+          p={4}
+          borderRadius={12}
+        >
+          <Box>
+            <Image src={Logo} alt="Logo" w="180px" maxW="2xs" p={6} />
+            <SidebarItems />
+          </Box>
+          {currentUser?.username && (
+            <Text
+              color={textColor}
+              noOfLines={2}
+              fontSize="sm"
+              p={2}
+              maxW="180px"
+            >
+              Logged in as: {currentUser.username}
+            </Text>
+          )}
+        </Flex>
+      </Box>
+    </>
+  )
+}
+
+export default Sidebar
+
+import React, { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Button,
+  FormControl,
+  Input,
+  useToast,
+} from '@chakra-ui/react';
+import { UsersService } from '../../client';
+
+export const PdfUpload: React.FC = () => {
+  const queryClient = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const toast = useToast();
+
+  const mutation = useMutation({
+    mutationFn: (formData: FormData) =>
+      UsersService.uploadResume({ formData }),
+    onSuccess: () => {
+      toast({
+        title: 'Success!',
+        description: 'PDF uploaded successfully.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Error!',
+        description: 'Failed to upload PDF.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] })
+    },
+
+  });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      setFile(files[0]);
+    }
+  };
+
+  const handleUpload = () => {
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      mutation.mutate(formData);
+      console.log(formData)
+    }
+  };
+
+  return (
+    <FormControl>
+      <Input type="file" accept="application/pdf" onChange={handleFileChange} />
+      <Button mt={4} onClick={handleUpload} >
+        Upload
+      </Button>
+    </FormControl>
+  );
+};
+
+import { Button, Container, Text } from "@chakra-ui/react"
+import { Link } from "@tanstack/react-router"
+
+const NotFound = () => {
+  return (
+    <>
+      <Container
+        h="100vh"
+        alignItems="stretch"
+        justifyContent="center"
+        textAlign="center"
+        maxW="sm"
+        centerContent
+      >
+        <Text
+          fontSize="8xl"
+          color="ui.main"
+          fontWeight="bold"
+          lineHeight="1"
+          mb={4}
+        >
+          404
+        </Text>
+        <Text fontSize="md">Oops!</Text>
+        <Text fontSize="md">Page not found.</Text>
+        <Button
+          as={Link}
+          to="/"
+          color="ui.main"
+          borderColor="ui.main"
+          variant="outline"
+          mt={4}
+        >
+          Go back
+        </Button>
+      </Container>
+    </>
+  )
+}
+
+export default NotFound
+import { Outlet, createRootRoute } from "@tanstack/react-router"
+import React, { Suspense } from "react"
+
+import NotFound from "../components/Common/NotFound"
+
+const TanStackRouterDevtools =
+  process.env.NODE_ENV === "production"
+    ? () => null
+    : React.lazy(() =>
+        import("@tanstack/router-devtools").then((res) => ({
+          default: res.TanStackRouterDevtools,
+        })),
+      )
+
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <Suspense>
+        <TanStackRouterDevtools />
+      </Suspense>
+    </>
+  ),
+  notFoundComponent: () => <NotFound />,
+})
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons"
+import {
+  Button,
+  Center,
+  Container,
+  FormControl,
+  FormErrorMessage,
+  Icon,
+  Image,
+  Input,
+  InputGroup,
+  InputRightElement,
+  Link,
+  useBoolean,
+} from "@chakra-ui/react"
+import {
+  Link as RouterLink,
+  createFileRoute,
+  redirect,
+} from "@tanstack/react-router"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import Logo from "../assets/images/fastapi-logo.svg"
+import type { Body_login_login_access_token as AccessToken } from "../client"
+import useAuth, { isLoggedIn } from "../hooks/useAuth"
+import { emailPattern } from "../utils"
+
+export const Route = createFileRoute("/login")({
+  component: Login,
+  beforeLoad: async () => {
+    if (isLoggedIn()) {
+      throw redirect({
+        to: "/",
+      })
+    }
+  },
+})
+
+function Login() {
+  const [show, setShow] = useBoolean()
+  const { loginMutation, error, resetError } = useAuth()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<AccessToken>({
+    mode: "onBlur",
+    criteriaMode: "all",
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  })
+
+  const onSubmit: SubmitHandler<AccessToken> = async (data) => {
+    if (isSubmitting) return
+
+    resetError()
+
+    try {
+      await loginMutation.mutateAsync(data)
+    } catch {
+      // error is handled by useAuth hook
+    }
+  }
+
+  return (
+    <>
+      <Container
+        as="form"
+        onSubmit={handleSubmit(onSubmit)}
+        h="100vh"
+        maxW="sm"
+        alignItems="stretch"
+        justifyContent="center"
+        gap={4}
+        centerContent
+      >
+        <Image
+          src={Logo}
+          alt="FastAPI logo"
+          height="auto"
+          maxW="2xs"
+          alignSelf="center"
+          mb={4}
+        />
+        <FormControl id="username" isInvalid={!!errors.username || !!error}>
+          <Input
+            id="username"
+            {...register("username", {
+              pattern: emailPattern,
+            })}
+            placeholder="Email"
+            type="email"
+            required
+          />
+          {errors.username && (
+            <FormErrorMessage>{errors.username.message}</FormErrorMessage>
+          )}
+        </FormControl>
+        <FormControl id="password" isInvalid={!!error}>
+          <InputGroup>
+            <Input
+              {...register("password")}
+              type={show ? "text" : "password"}
+              placeholder="Password"
+              required
+            />
+            <InputRightElement
+              color="ui.dim"
+              _hover={{
+                cursor: "pointer",
+              }}
+            >
+              <Icon
+                onClick={setShow.toggle}
+                aria-label={show ? "Hide password" : "Show password"}
+              >
+                {show ? <ViewOffIcon /> : <ViewIcon />}
+              </Icon>
+            </InputRightElement>
+          </InputGroup>
+          {error && <FormErrorMessage>{error}</FormErrorMessage>}
+        </FormControl>
+        <Center>
+          <Link as={RouterLink} to="/recover-password" color="blue.500">
+            Forgot password?
+          </Link>
+        </Center>
+        <Button variant="primary" type="submit" isLoading={isSubmitting}>
+          Log In
+        </Button>
+      </Container>
+    </>
+  )
+}
+import {
+  Button,
+  Container,
+  FormControl,
+  FormErrorMessage,
+  Heading,
+  Input,
+  Text,
+} from "@chakra-ui/react"
+import { createFileRoute, redirect } from "@tanstack/react-router"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import { LoginService } from "../client"
+import { isLoggedIn } from "../hooks/useAuth"
+import useCustomToast from "../hooks/useCustomToast"
+import { emailPattern } from "../utils"
+
+interface FormData {
+  email: string
+}
+
+export const Route = createFileRoute("/recover-password")({
+  component: RecoverPassword,
+  beforeLoad: async () => {
+    if (isLoggedIn()) {
+      throw redirect({
+        to: "/",
+      })
+    }
+  },
+})
+
+function RecoverPassword() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormData>()
+  const showToast = useCustomToast()
+
+  const onSubmit: SubmitHandler<FormData> = async (data) => {
+    await LoginService.recoverPassword({
+      email: data.email,
+    })
+    showToast(
+      "Email sent.",
+      "We sent an email with a link to get back into your account.",
+      "success",
+    )
+  }
+
+  return (
+    <Container
+      as="form"
+      onSubmit={handleSubmit(onSubmit)}
+      h="100vh"
+      maxW="sm"
+      alignItems="stretch"
+      justifyContent="center"
+      gap={4}
+      centerContent
+    >
+      <Heading size="xl" color="ui.main" textAlign="center" mb={2}>
+        Password Recovery
+      </Heading>
+      <Text align="center">
+        A password recovery email will be sent to the registered account.
+      </Text>
+      <FormControl isInvalid={!!errors.email}>
+        <Input
+          id="email"
+          {...register("email", {
+            required: "Email is required",
+            pattern: emailPattern,
+          })}
+          placeholder="Email"
+          type="email"
+        />
+        {errors.email && (
+          <FormErrorMessage>{errors.email.message}</FormErrorMessage>
+        )}
+      </FormControl>
+      <Button variant="primary" type="submit" isLoading={isSubmitting}>
+        Continue
+      </Button>
+    </Container>
+  )
+}
+import {
+  Container,
+  Heading,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+} from "@chakra-ui/react"
+import { useQueryClient } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+
+import type { UserPublicMe } from "../../client"
+import Appearance from "../../components/UserSettings/Appearance"
+import ChangePassword from "../../components/UserSettings/ChangePassword"
+import DeleteAccount from "../../components/UserSettings/DeleteAccount"
+import UserInformation from "../../components/UserSettings/UserInformation"
+import UserCV from "../../components/UserSettings/UserCV"
+
+const tabsConfig = [
+  { title: "My profile", component: UserInformation },
+  { title: "My CV", component: UserCV },
+  { title: "Password", component: ChangePassword },
+  { title: "Appearance", component: Appearance },
+  { title: "Danger zone", component: DeleteAccount },
+
+]
+
+export const Route = createFileRoute("/_layout/settings")({
+  component: UserSettings,
+})
+
+function UserSettings() {
+  const queryClient = useQueryClient()
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+  const finalTabs = currentUser?.is_superuser
+    ? tabsConfig.slice(0, 3)
+    : tabsConfig
+
+  return (
+    <Container maxW="full">
+      <Heading size="lg" textAlign={{ base: "center", md: "left" }} py={12}>
+        User Settings
+      </Heading>
+      <Tabs variant="enclosed">
+        <TabList>
+          {finalTabs.map((tab, index) => (
+            <Tab key={index}>{tab.title}</Tab>
+          ))}
+        </TabList>
+        <TabPanels>
+          {finalTabs.map((tab, index) => (
+            <TabPanel key={index}>
+              <tab.component />
+            </TabPanel>
+          ))}
+        </TabPanels>
+      </Tabs>
+    </Container>
+  )
+}
+import { Box, Container, Text } from "@chakra-ui/react"
+import { useQueryClient } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+
+import type { UserPublicMe } from "../../client"
+
+export const Route = createFileRoute("/_layout/")({
+  component: Dashboard,
+})
+
+function Dashboard() {
+  const queryClient = useQueryClient()
+
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+
+  return (
+    <>
+      <Container maxW="full">
+        <Box pt={12} m={4}>
+          <Text fontSize="2xl">
+            Hi, {currentUser?.name || currentUser?.username} 👋🏼
+          </Text>
+          <Text>Welcome back, nice to see you again!</Text>
+        </Box>
+      </Container>
+    </>
+  )
+}
+import { ChakraProvider } from "@chakra-ui/react";
+import { createFileRoute } from "@tanstack/react-router";
+import MainLayout from "../../components/comparisons/Layout";
+
+export const Route = createFileRoute("/_layout/comparisons")({
+  component: ComparisonsHome,
+});
+
+function ComparisonsHome() {
+  return (
+    <ChakraProvider>
+      <MainLayout />
+    </ChakraProvider>
+  );
+}
+
+export default ComparisonsHome;
+import { useState, useEffect } from "react";
+import {
+  Container,
+  Heading,
+  Box,
+  ChakraProvider,
+  Flex,
+  Text,
+  Input,
+  Button,
+  VStack,
+} from "@chakra-ui/react";
+import { createFileRoute } from "@tanstack/react-router";
+import { JobPostingServices, UserComparisonServices } from "../../client/services";
+import { JobPostings, JobPosting, UserJobPostingComparison, Message } from "../../client/models";
+import JobList from "../../components/JobPostings/JobList";
+import JobDetails from "../../components/JobPostings/JobDetails";
+import Pagination from "../../components/JobPostings/Pagination"
+
+
+export const Route = createFileRoute("/_layout/jobpostings")({
+  component: JobPostingsHome,
+});
+
+function JobPostingsHome() {
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [jobPostings, setJobPostings] = useState<JobPostings | null>(null);
+  const [jobTitle, setJobTitle] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string>("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [userComparison, setUserComparison] = useState<UserJobPostingComparison | Message | null>(null);
+  const limit = 25;
+
+  const fetchJobPostings = async () => {
+    try {
+      const response = await JobPostingServices.getJobPostings({
+        requestBody: {
+          skip: limit * (currentPage - 1),
+          limit: limit,
+          job_title: jobTitle,
+          company_name: companyName,
+        },
+      });
+      setJobPostings(response);
+    } catch (error) {
+      console.error("Error fetching job postings:", error);
+    }
+  };
+
+  const fetchComparisonStatus = async (ComparisonId: number | null = null, JobPostingId: number | null = null) => {
+    if (!ComparisonId && !JobPostingId) {
+      console.error("Either ComparisonId or JobPostingId must be provided");
+      setUserComparison(null);
+      return;
+    }
+    try {
+      const comparison = await UserComparisonServices.getUserComparison({
+        comparison_id: ComparisonId,
+        job_posting_id: JobPostingId,
+      });
+      setUserComparison(comparison);
+    } catch (error) {
+      // Check if the error is a response with a status property
+      if (error && typeof error === 'object' && 'status' in error) {
+        if (error.status === 404) {
+          // Comparison not found
+          setUserComparison(null);
+          return;
+        }
+      }
+      // Handle other errors
+      setUserComparison(null);
+      // You might want to set an error state here or handle it differently
+    }
+  };
+  useEffect(() => {
+    fetchJobPostings();
+  }, [currentPage, jobTitle, companyName]);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchJobPostings();
+  };
+
+  const handleJobSelect = (job: JobPosting) => {
+    setSelectedJob(job);
+    setUserComparison(null);
+    fetchComparisonStatus(null, job.id);
+  };
+
+  const handleActivateComparison = async (JobPostingId: number) => {
+    try {
+      // console.log("Activating comparison for job ID:", jobPostingId)
+
+      await UserComparisonServices.activateUserComparison({ job_posting_id: JobPostingId });
+
+      fetchComparisonStatus(null, JobPostingId); // Refresh status
+    } catch (error) {
+      // console.error("Error activating comparison:", error);
+    }
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  }
+  return (
+    <ChakraProvider>
+      <Container maxW="full">
+        <Heading size="lg" textAlign={{ base: "center", md: "left" }} py={12}>
+          Job Postings
+        </Heading>
+        <VStack spacing={4} mb={6}>
+          <Input
+            placeholder="Job Title"
+            value={jobTitle}
+            onChange={(e) => setJobTitle(e.target.value)}
+          />
+          <Input
+            placeholder="Company Name"
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
+          />
+          <Button onClick={handleSearch}>Search</Button>
+          <Pagination
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+            totalItems={limit * 10}
+            itemsPerPage={limit}
+          />
+
+        </VStack>
+        <Flex height="100vh">
+          <Box width="25%" overflowY="scroll" borderRight="1px solid #ccc">
+            {jobPostings && (
+              <JobList
+                jobPostings={jobPostings}
+                onJobSelect={handleJobSelect}
+              />
+            )}
+          </Box>
+          <Box width="75%" p={2}>
+            {selectedJob ? (
+              <>
+                <Button
+                  onClick={() => handleActivateComparison(selectedJob.id)}
+                  disabled={userComparison !== null && 'is_active' in userComparison && userComparison.is_active}
+                  mt={4}
+                >
+                  {userComparison !== null && 'is_active' in userComparison && userComparison.is_active
+                    ? "Comparison already active"
+                    : "Activate this job for comparison"}
+                </Button>
+
+                <JobDetails job={selectedJob} />
+              </>
+            ) : (
+              <Text>Select a job to see details</Text>
+            )}
+          </Box>
+        </Flex>
+      </Container>
+    </ChakraProvider>
+  );
+}
+import {
+  Badge,
+  Box,
+  Container,
+  Flex,
+  Heading,
+  SkeletonText,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr,
+} from "@chakra-ui/react"
+import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
+import { createFileRoute } from "@tanstack/react-router"
+
+import { Suspense } from "react"
+import { type UserPublicMe, UsersService } from "../../client"
+// import ActionsMenu from "../../components/Common/ActionsMenu"
+
+export const Route = createFileRoute("/_layout/admin")({
+  component: Admin,
+})
+
+const MembersTableBody = () => {
+  const queryClient = useQueryClient()
+  const currentUser = queryClient.getQueryData<UserPublicMe>(["currentUser"])
+
+  const { data: user } = useSuspenseQuery({
+    queryKey: ["user"],
+    queryFn: () => UsersService.readUserMe(),
+  })
+
+  return (
+    <Tbody>
+      <Tr key={user.id}>
+        <Td color={!user.name ? "ui.dim" : "inherit"}>
+          {user.name || "N/A"}
+          {currentUser?.id === user.id && (
+            <Badge ml="1" colorScheme="teal">
+              You
+            </Badge>
+          )}
+        </Td>
+        <Td>{user.username}</Td>
+        <Td>{user.is_superuser ? "Superuser" : "User"}</Td>
+        <Td>
+          <Flex gap={2}>
+            <Box
+              w="2"
+              h="2"
+              borderRadius="50%"
+              bg={user.is_superuser ? "ui.success" : "ui.danger"}
+              alignSelf="center"
+            />
+            {user.is_superuser ? "Active" : "Inactive"}
+          </Flex>
+        </Td>
+        <Td>
+          {/* <ActionsMenu */}
+          {/*   type="User" */}
+          {/*   value={user} */}
+          {/*   disabled={currentUser?.id === user.id ? true : false} */}
+          {/* /> */}
+        </Td>
+      </Tr>
+    </Tbody>
+  )
+}
+
+const MembersBodySkeleton = () => {
+  return (
+    <Tbody>
+      <Tr>
+        {new Array(5).fill(null).map((_, index) => (
+          <Td key={index}>
+            <SkeletonText noOfLines={1} paddingBlock="16px" />
+          </Td>
+        ))}
+      </Tr>
+    </Tbody>
+  )
+}
+
+function Admin() {
+  return (
+    <Container maxW="full">
+      <Heading size="lg" textAlign={{ base: "center", md: "left" }} pt={12}>
+        User Management
+      </Heading>
+      <TableContainer>
+        <Table fontSize="md" size={{ base: "sm", md: "md" }}>
+          <Thead>
+            <Tr>
+              <Th width="20%">Full name</Th>
+              <Th width="50%">Email</Th>
+              <Th width="10%">Role</Th>
+              <Th width="10%">Status</Th>
+              <Th width="10%">Actions</Th>
+            </Tr>
+          </Thead>
+          <Suspense fallback={<MembersBodySkeleton />}>
+            <MembersTableBody />
+          </Suspense>
+        </Table>
+      </TableContainer>
+    </Container>
+  )
+}
+import {
+  Button,
+  Container,
+  FormControl,
+  FormErrorMessage,
+  FormLabel,
+  Heading,
+  Input,
+  Text,
+} from "@chakra-ui/react"
+import { useMutation } from "@tanstack/react-query"
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router"
+import { type SubmitHandler, useForm } from "react-hook-form"
+
+import { type ApiError, LoginService, type NewPassword } from "../client"
+import { isLoggedIn } from "../hooks/useAuth"
+import useCustomToast from "../hooks/useCustomToast"
+import { confirmPasswordRules, passwordRules } from "../utils"
+
+interface NewPasswordForm extends NewPassword {
+  confirm_password: string
+}
+
+export const Route = createFileRoute("/reset-password")({
+  component: ResetPassword,
+  beforeLoad: async () => {
+    if (isLoggedIn()) {
+      throw redirect({
+        to: "/",
+      })
+    }
+  },
+})
+
+function ResetPassword() {
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    reset,
+    formState: { errors },
+  } = useForm<NewPasswordForm>({
+    mode: "onBlur",
+    criteriaMode: "all",
+    defaultValues: {
+      new_password: "",
+    },
+  })
+  const showToast = useCustomToast()
+  const navigate = useNavigate()
+
+  const resetPassword = async (data: NewPassword) => {
+    const token = new URLSearchParams(window.location.search).get("token")
+    if (!token) return
+    await LoginService.resetPassword({
+      requestBody: { new_password: data.new_password, token: token },
+    })
+  }
+
+  const mutation = useMutation({
+    mutationFn: resetPassword,
+    onSuccess: () => {
+      showToast("Success!", "Password updated.", "success")
+      reset()
+      navigate({ to: "/login" })
+    },
+    onError: (err: ApiError) => {
+      const errDetail = (err.body as any)?.detail
+      showToast("Something went wrong.", `${errDetail}`, "error")
+    },
+  })
+
+  const onSubmit: SubmitHandler<NewPasswordForm> = async (data) => {
+    mutation.mutate(data)
+  }
+
+  return (
+    <Container
+      as="form"
+      onSubmit={handleSubmit(onSubmit)}
+      h="100vh"
+      maxW="sm"
+      alignItems="stretch"
+      justifyContent="center"
+      gap={4}
+      centerContent
+    >
+      <Heading size="xl" color="ui.main" textAlign="center" mb={2}>
+        Reset Password
+      </Heading>
+      <Text textAlign="center">
+        Please enter your new password and confirm it to reset your password.
+      </Text>
+      <FormControl mt={4} isInvalid={!!errors.new_password}>
+        <FormLabel htmlFor="password">Set Password</FormLabel>
+        <Input
+          id="password"
+          {...register("new_password", passwordRules())}
+          placeholder="Password"
+          type="password"
+        />
+        {errors.new_password && (
+          <FormErrorMessage>{errors.new_password.message}</FormErrorMessage>
+        )}
+      </FormControl>
+      <FormControl mt={4} isInvalid={!!errors.confirm_password}>
+        <FormLabel htmlFor="confirm_password">Confirm Password</FormLabel>
+        <Input
+          id="confirm_password"
+          {...register("confirm_password", confirmPasswordRules(getValues))}
+          placeholder="Password"
+          type="password"
+        />
+        {errors.confirm_password && (
+          <FormErrorMessage>{errors.confirm_password.message}</FormErrorMessage>
+        )}
+      </FormControl>
+      <Button variant="primary" type="submit">
+        Reset Password
+      </Button>
+    </Container>
+  )
+}
+import { Flex, Spinner } from "@chakra-ui/react"
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+
+import Sidebar from "../components/Common/Sidebar"
+import UserMenu from "../components/Common/UserMenu"
+import useAuth, { isLoggedIn } from "../hooks/useAuth"
+
+export const Route = createFileRoute("/_layout")({
+  component: Layout,
+  beforeLoad: async () => {
+    if (!isLoggedIn()) {
+      throw redirect({
+        to: "/login",
+      })
+    }
+  },
+})
+
+function Layout() {
+  const { isLoading } = useAuth()
+
+  return (
+    <Flex maxW="large" h="auto" position="relative">
+      <Sidebar />
+      {isLoading ? (
+        <Flex justify="center" align="center" height="100vh" width="full">
+          <Spinner size="xl" color="ui.main" />
+        </Flex>
+      ) : (
+        <Outlet />
+      )}
+      <UserMenu />
+    </Flex>
+  )
+}

@@ -127,7 +127,6 @@ class CVBuilder(BaseBuilder):
         self.examples = self._get_examples_from_db()
         self.output_parser = JsonOutputParser(pydantic_object=WorkExperiencesLLM)
         self._create_chain()
-        print("CV Builder instantiated")
 
     def _get_examples_from_db(self):
         examples_list = []
@@ -141,7 +140,7 @@ class CVBuilder(BaseBuilder):
 
             examples = session.exec(
                 select(WorkExperienceExamples).where(
-                    WorkExperienceExamples.comparison_id.in_(comparison_ids)
+                    WorkExperienceExamples.comparison_id.in_(comparison_ids)  # type: ignore
                 )
             ).all()
 
@@ -186,7 +185,6 @@ class CVBuilder(BaseBuilder):
         self.chain = self.template | self.llm | self.output_parser
 
     def _run_chain(self, job_id: int):
-        print("Running chain")
         with get_openai_callback() as cb:
             result = self.chain.invoke(
                 {
@@ -312,7 +310,8 @@ class CVBuilder(BaseBuilder):
                 select(WorkExperiences)
                 .where(WorkExperiences.comparison_id == comparison_id)
                 .order_by(
-                    desc(WorkExperiences.end_date), asc(WorkExperiences.start_date)
+                    desc(WorkExperiences.end_date),  # type: ignore
+                    asc(WorkExperiences.start_date),  # type: ignore
                 )
             )
             work_experiences = session.exec(statement).all()
@@ -407,7 +406,7 @@ class CVBuilder(BaseBuilder):
                 f"{self._get_job_company_and_position(job_id)}_CV",
             ),
         )
-        self._save_cv_to_database(job_id=job_id, pdf_bytes=pdf_bytes)
+        self._save_cv_to_database(job_id=job_id, pdf_bytes=pdf_bytes)  # type: ignore
         self._cleanup_build_directory(
             os.path.join(ROOT_DIR, "media", f"{self.user_id}")
         )

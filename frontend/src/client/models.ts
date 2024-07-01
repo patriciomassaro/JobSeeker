@@ -161,6 +161,7 @@ export type JobPostings = {
 };
 
 export type WorkExperience = {
+  id: number;
   comparison_id: number;
   start_date: string;
   end_date: string;
@@ -170,6 +171,7 @@ export type WorkExperience = {
 };
 
 export type CoverLetterParagraph = {
+  id: number;
   comparison_id: number;
   paragraph_number: number;
   paragraph_text: string;
@@ -193,3 +195,5 @@ export type UserJobPostingComparison = {
 export interface UserJobPostingComparisons {
   data: UserJobPostingComparison[];
 }
+
+

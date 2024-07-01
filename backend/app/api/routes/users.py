@@ -53,7 +53,6 @@ async def upload_resume(
 
     contents = await file.read()
 
-    print(contents)
     current_user.resume = contents
     session.add(current_user)
     session.commit()

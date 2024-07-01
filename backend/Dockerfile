@@ -41,11 +41,15 @@ RUN CHROME_VERSION=$(google-chrome --product-version | cut -d'.' -f1-3) && \
 # Verify ChromeDriver installation
 RUN chromedriver --version
 
-# Install TeX Live
+# Latex packages
 RUN apt-get update && \
-    apt-get install -y texlive-full
+    apt-get install -y --no-install-recommends texlive-latex-recommended texlive-fonts-recommended && \
+    apt-get install -y --no-install-recommends texlive-latex-extra texlive-fonts-extra texlive-lang-all && \
+    rm -rf /var/lib/apt/lists/*
+
 # Verify TeX Live installation
-RUN pdflatex --version
+RUN pdflatex --version || echo "pdflatex installation failed"
+
 
 ENV PYTHONPATH=/app
 

@@ -3,6 +3,7 @@ import os
 from sqlmodel import Session
 from app.core.db import engine
 from app.llm.base_extractor import BaseLLMExtractor
+from app.llm import ModelNames
 from app.llm.utils import extract_text_from_pdf_bytes
 from app.models import Users
 from pydantic import BaseModel, Field, validator
@@ -25,11 +26,9 @@ class Personal(BaseModel):
         description="List of personal or professional links like github,linkedin, etc.",
     )
 
-    # Validate the email address
     @validator("email")
     def email_validator(cls, v):
         if v is not None:
-            # it should be a valid email adress "characters@characters.characters"
             if not re.match(r"[^@]+@[^@]+\.[^@]+", v):
                 raise ValueError("Invalid email address")
         return v
@@ -122,8 +121,17 @@ class CVLLMExtractor(BaseLLMExtractor):
                     )
                     return 1
                 else:
-                    self.logger.info(f"User {user_id} already has no summary")
+                    self.logger.info(f"User {user_id} has no resume")
                     return 0
             else:
                 self.logger.error(f"User with id {user_id} not found.")
                 return 0
+
+
+# Example usage
+if __name__ == "__main__":
+    cv_extractor = CVLLMExtractor(model_name=ModelNames.GPT3_TURBO.value, temperature=0)
+    result = cv_extractor.extract_cv_and_write_to_db(
+        user_id=123
+    )  # Replace with an actual user ID
+    print(f"Extraction result: {result}")

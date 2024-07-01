@@ -47,22 +47,32 @@ function JobPostingsHome() {
     }
   };
 
-  const fetchComparisonStatus = async (ComparisonId: number) => {
+  const fetchComparisonStatus = async (ComparisonId: number | null = null, JobPostingId: number | null = null) => {
+    if (!ComparisonId && !JobPostingId) {
+      console.error("Either ComparisonId or JobPostingId must be provided");
+      setUserComparison(null);
+      return;
+    }
     try {
-      const comparison: UserJobPostingComparison | Message = await UserComparisonServices.getUserComparison({
+      const comparison = await UserComparisonServices.getUserComparison({
         comparison_id: ComparisonId,
+        job_posting_id: JobPostingId,
       });
-      // if comparison is a message, then setUsercomparison to null
-      if ("message" in comparison) {
-        setUserComparison(null);
-      }
       setUserComparison(comparison);
     } catch (error) {
+      // Check if the error is a response with a status property
+      if (error && typeof error === 'object' && 'status' in error) {
+        if (error.status === 404) {
+          // Comparison not found
+          setUserComparison(null);
+          return;
+        }
+      }
+      // Handle other errors
       setUserComparison(null);
-      // console.error("Error fetching comparison status:", error);
+      // You might want to set an error state here or handle it differently
     }
   };
-
   useEffect(() => {
     fetchJobPostings();
   }, [currentPage, jobTitle, companyName]);
@@ -75,16 +85,16 @@ function JobPostingsHome() {
   const handleJobSelect = (job: JobPosting) => {
     setSelectedJob(job);
     setUserComparison(null);
-    fetchComparisonStatus(job.id);
+    fetchComparisonStatus(null, job.id);
   };
 
-  const handleActivateComparison = async (jobPostingId: number) => {
+  const handleActivateComparison = async (JobPostingId: number) => {
     try {
       // console.log("Activating comparison for job ID:", jobPostingId)
 
-      await UserComparisonServices.activateUserComparison({ job_posting_id: jobPostingId });
+      await UserComparisonServices.activateUserComparison({ job_posting_id: JobPostingId });
 
-      fetchComparisonStatus(jobPostingId); // Refresh status
+      fetchComparisonStatus(null, JobPostingId); // Refresh status
     } catch (error) {
       // console.error("Error activating comparison:", error);
     }

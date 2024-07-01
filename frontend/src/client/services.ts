@@ -4,7 +4,8 @@ import { request as __request } from './core/request';
 
 import type {
   Body_login_login_access_token, Message, NewPassword, Token, UserPublicMe, UpdatePassword, UserCreate, UserRegister, UserUpdateMe,
-  ModelParameters, JobPostings, GetJobPostingParameters, UserJobPostingComparison, UserJobPostingComparisons, ModelNames
+  ModelParameters, JobPostings, GetJobPostingParameters, UserJobPostingComparison, UserJobPostingComparisons, ModelNames, CoverLetterParagraph,
+  WorkExperience
 } from './models';
 
 export type TDataLoginAccessToken = {
@@ -406,13 +407,23 @@ export class UserComparisonServices {
   /**
    * Get comparison status for a job posting.
    * @param job_posting_id - The ID of the job posting.
+   * @param comparison_id - The ID of the comparison.
    * @returns Message - The comparison status message.
    * @throws ApiError
    */
-  public static getUserComparison(data: { comparison_id: number }): CancelablePromise<UserJobPostingComparison> {
+  public static getUserComparison(data: { comparison_id: number | null, job_posting_id: number | null }): CancelablePromise<UserJobPostingComparison> {
+    const queryParams = new URLSearchParams();
+
+    if (data.comparison_id !== null) {
+      queryParams.append("comparison_id", data.comparison_id.toString());
+    }
+
+    if (data.job_posting_id !== null) {
+      queryParams.append("job_posting_id", data.job_posting_id.toString());
+    }
     return __request(OpenAPI, {
       method: 'GET',
-      url: `/api/v1/comparisons/?id=${data.comparison_id}`,
+      url: `/api/v1/comparisons/?${queryParams}`,
       errors: {
         404: `Comparison not found`,
       },
@@ -424,15 +435,27 @@ export class UserComparisonServices {
       method: 'GET',
       url: `/api/v1/comparisons/current_user`,
       errors: {
-        404: `Comparison not found`,
+        404: `Current user comparisos not found`,
       },
     });
   }
 
-  public static generateComparisonResume(data: { comparison_id: number }): CancelablePromise<Message> {
+  public static generateComparisonResume(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
     return __request(OpenAPI, {
-      method: 'PATCH',
+      method: 'POST',
       url: `/api/v1/comparisons/generate-resume?comparison_id=${data.comparison_id}`,
+      body: parameters,
+      errors: {
+        500: `Server Error`,
+      },
+    });
+  }
+
+  public static generateComparisonCoverLetter(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'POST',
+      url: `/api/v1/comparisons/generate-cover-letter?comparison_id=${data.comparison_id}`,
+      body: parameters,
       errors: {
         500: `Server Error`,
       },
@@ -455,7 +478,31 @@ export class UserComparisonServices {
       },
     });
   }
-};
+  public static editWorkExperience(data: { newWorkExperience: WorkExperience }): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'POST',
+      url: '/api/v1/comparisons/edit-work-experience',
+      body: data.newWorkExperience,
+      errors: {
+        404: `User or Work Experience not found`,
+        500: `Server Error`,
+      },
+    });
+  }
+
+  public static editCoverLetterParagraph(data: { newCoverLetterParagraph: CoverLetterParagraph }): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'POST',
+      url: '/api/v1/comparisons/edit-cover-letter-paragraph',
+      body: data.newCoverLetterParagraph,
+      errors: {
+        404: `User or Cover Letter Paragraph not found`,
+        500: `Server Error`,
+      },
+    });
+  }
+}
+
 
 
 

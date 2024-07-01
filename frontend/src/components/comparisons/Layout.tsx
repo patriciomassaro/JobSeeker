@@ -22,18 +22,33 @@ const MainLayout: React.FC = () => {
     fetchComparisons();
   }, []);
 
-  const handleJobComparisonSelect = (comparison: UserJobPostingComparison) => {
+  const handleJobComparisonSelect = (comparison: UserJobPostingComparison): void => {
     const fetchJobDetails = async () => {
       try {
-        const response = await UserComparisonServices.getUserComparison({ comparison_id: comparison.id });
+        const response = await UserComparisonServices.getUserComparison({
+          comparison_id: comparison.id,
+          job_posting_id: null
+        });
         setSelectedJobComparison(response as UserJobPostingComparison);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("Error fetching job comparison:", error);
       }
     };
     fetchJobDetails();
+  };
 
+  const handleComparisonUpdate = (updatedComparison: UserJobPostingComparison) => {
+    setSelectedJobComparison(updatedComparison);
+    // Also update the comparison in the list if necessary
+    if (jobComparisons) {
+      const updatedComparisons = {
+        ...jobComparisons,
+        data: jobComparisons.data.map(comp =>
+          comp.id === updatedComparison.id ? updatedComparison : comp
+        )
+      };
+      setJobComparisons(updatedComparisons);
+    }
   };
 
   return (
@@ -46,14 +61,16 @@ const MainLayout: React.FC = () => {
         </Box>
         <Box width="80%" p={2}>
           {selectedJobComparison ? (
-            <ComparisonDetails comparison={selectedJobComparison} />
+            <ComparisonDetails
+              comparison={selectedJobComparison}
+              onComparisonUpdate={handleComparisonUpdate}
+            />
           ) : (
             <Text>Select a job to see details</Text>
           )}
         </Box>
       </Flex>
     </Container>
-
   );
 };
 

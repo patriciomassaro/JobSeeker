@@ -1,18 +1,7 @@
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel
-from langchain_community.callbacks import get_openai_callback
+import json
+from pydantic import BaseModel
 from app.logger import Logger
-import warnings
-from pydantic.json_schema import PydanticJsonSchemaWarning
-
-warnings.filterwarnings("ignore", category=PydanticJsonSchemaWarning)
-
-
 from app.llm import LLMInitializer
-
-
-CV_DATA_EXTRACTOR_SYSTEM_PROMPT_TEXT = "You are an expert extraction algorithm. If you do not know the value of an attribute asked to extract, return null for the attribute's value. \n {format_instructions} \n {input}"
 
 
 class BaseLLMExtractor:
@@ -25,22 +14,38 @@ class BaseLLMExtractor:
         log_prefix="LLMExtractor",
     ):
         self.llm_init = LLMInitializer(model_name=model_name, temperature=temperature)
-        self.llm = self.llm_init.get_llm()
-        self.output_parser = JsonOutputParser(pydantic_object=pydantic_object)
-        self.template = PromptTemplate(
-            template=CV_DATA_EXTRACTOR_SYSTEM_PROMPT_TEXT,
-            input_variables=["input"],
-            partial_variables={
-                "format_instructions": self.output_parser.get_format_instructions()
-            },
-        )
+        self.pydantic_object = pydantic_object
         self.logger = Logger(
             prefix=log_prefix, log_file_name=log_file_name
         ).get_logger()
-        self.chain = self.template | self.llm | self.output_parser
+
+    def get_prompt(self, text: str) -> str:
+        return f"""
+        You are an expert extraction algorithm. If you do not know the value of an attribute asked to extract, return null for the attribute's value.
+        
+        Please extract the following information from the given text and format it as a JSON object:
+        
+        {self.pydantic_object.schema_json()}
+        
+        Text to extract from:
+        {text}
+        """
 
     def extract_data_from_text(self, text: str) -> dict:
-        with get_openai_callback() as cb:
-            result = self.chain.invoke({"input": text})
-            self.logger.info(f"Extracted data from text: \n {cb}")
-            return result
+        prompt = self.get_prompt(text)
+        messages = [{"role": "user", "content": prompt}]
+
+        response = self.llm_init.get_completion(messages)
+
+        try:
+            extracted_data = json.loads(response)
+            # Validate the extracted data against the Pydantic model
+            validated_data = self.pydantic_object(**extracted_data)
+            self.logger.info(f"Extracted and validated data from text")
+            return validated_data.dict()
+        except json.JSONDecodeError:
+            self.logger.error("Failed to parse JSON from LLM response")
+            raise
+        except ValueError as e:
+            self.logger.error(f"Validation error: {str(e)}")
+            raise

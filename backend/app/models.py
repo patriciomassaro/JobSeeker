@@ -497,6 +497,7 @@ class CoverLetterParagraphBase(SQLModel):
 
 
 class CoverLetterParagraphPublic(CoverLetterParagraphBase):
+    id: int
     pass
 
 
@@ -533,6 +534,7 @@ class WorkExperienceBase(SQLModel):
 
 
 class WorkExperiencePublic(WorkExperienceBase):
+    id: int
     pass
 
 

@@ -303,10 +303,3 @@ class CoverLetterBuilder(BaseBuilder):
         self._cleanup_build_directory(
             os.path.join(ROOT_DIR, "media", f"{self.user_id}")
         )
-
-
-if __name__ == "__main__":
-    cover_letter_builder = CoverLetterBuilder(
-        model_name=ModelNames.GPT4_TURBO, user_id=1, temperature=0.4
-    )
-    cover_letter_builder.build(job_ids=[3872266079, 3872263836])
