@@ -5,18 +5,20 @@ from pydantic import constr
 from sqlalchemy import String, TEXT
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
-from sqlmodel import Column, Field, SQLModel, Relationship, BigInteger, UniqueConstraint
+from sqlmodel import (
+    Column,
+    Field,
+    SQLModel,
+    Relationship,
+    BigInteger,
+    UniqueConstraint,
+    CheckConstraint,
+)
 
 from app.core.utils import snake_case
-from app.llm import ModelNames
 
 
 ############# LLM NAMES #########
-class AvailableLLMModels(SQLModel):
-    """list all model names available in the backend"""
-
-    llm_alias: str
-    llm_value: str
 
 
 class ModelParameters(SQLModel):
@@ -24,15 +26,10 @@ class ModelParameters(SQLModel):
     temperature: float
 
     def __init__(self, name: str, temperature: float):
-        if name not in ModelNames.__members__:
-            raise ValueError(f"Model name must be one of {ModelNames.__members__}")
         if temperature < 0.0 or temperature > 2.0:
             raise ValueError("Temperature must be between 0.0 and 2.0")
         self.name = name
         self.temperature = temperature
-
-    def get_value(self):
-        return ModelNames[self.name].value
 
 
 ############# USERS #############
@@ -53,7 +50,7 @@ class UserRegister(SQLModel):
     full_name: str | None = None
 
 
-class UserUpdate(SQLModel):
+class UserUpdateMe(SQLModel):
     username: str | None = None
     name: str | None = None
     password: str | None = None
@@ -68,13 +65,7 @@ class UserUpdate(SQLModel):
     additional_info: str | None = None
 
 
-class UserPublic(UserBase):
-    id: int
-    date_created: datetime
-    date_updated: datetime
-
-
-class UserPublicMe(UserPublic):
+class UserPublicMe(UserBase):
     resume: bytes | None = None
     parsed_personal: dict | None = Field(sa_column=Column(JSON), default=None)
     parsed_work_experiences: dict | None = Field(sa_column=Column(JSON), default=None)
@@ -84,15 +75,7 @@ class UserPublicMe(UserPublic):
         sa_column=Column(ARRAY(String)), default=None
     )
     additional_info: str | None = None
-
-
-class UsersPublic(SQLModel):
-    data: list[UserPublic]
-    count: int
-
-
-class UserUpdateMe(SQLModel):
-    name: str | None = None
+    balance: float = Field(default=0.0)
 
 
 # Database model, database table inferred from class name
@@ -106,12 +89,11 @@ class Users(UserPublicMe, table=True):
     )
     is_superuser: bool = False
 
-    user_job_posting_comparisons: list["UserJobPostingComparisons"] = Relationship(
-        back_populates="user"
-    )
+    comparisons: list["Comparisons"] = Relationship(back_populates="user")
+    llm_transactions: list["LLMTransactions"] = Relationship(back_populates="user")
 
 
-class UpdatePassword(SQLModel):
+class UserPassword(SQLModel):
     current_password: str
     new_password: str
 
@@ -169,6 +151,42 @@ class BaseEnum(Enum):
                     else ""
                 )
         return ""
+
+
+class LLMInfoEnum(Enum):
+    GPT4_O = (1, "GPT4_O", "gpt-4o", "OpenAI", 5 / 1000000, 15 / 1000000)
+    GPT4_TURBO = (
+        2,
+        "GPT4",
+        "gpt-4-turbo-2024-04-09",
+        "OpenAI",
+        10 / 1000000,
+        20 / 1000000,
+    )
+    GPT3_TURBO = (
+        3,
+        "GPT3",
+        "gpt-3.5-turbo-0125",
+        "OpenAI",
+        0.5 / 1000000,
+        1.5 / 1000000,
+    )
+    CLAUDE_OPUS = (
+        4,
+        "CLAUDE_OPUS",
+        "claude-3-opus-20240229",
+        "Anthropic",
+        15 / 1000000,
+        75 / 1000000,
+    )
+    CLAUDE_SONNET = (
+        5,
+        "CLAUDE_SONNET",
+        "claude-3-5-sonnet-20240620",
+        "Anthropic",
+        3 / 1000000,
+        15 / 1000000,
+    )
 
 
 class InstitutionSizesEnum(BaseEnum):
@@ -296,6 +314,22 @@ class RemoteModalities(SQLModel, table=True):
     description: str
 
 
+class LLMInfoBase(SQLModel):
+    public_name: str
+
+
+class LLMInfo(LLMInfoBase, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type:ignore
+        return snake_case(cls.__name__)
+
+    id: int | None = Field(default=None, primary_key=True)
+    api_name: str
+    provider: str
+    input_pricing: float
+    output_pricing: float
+
+
 ####### INSTITUTIONS ########
 
 
@@ -345,6 +379,7 @@ class JobPostingBase(SQLModel):
     title: str
     company: str
     company_url: str | None
+    institution_id: int | None = Field(foreign_key="institutions.id", default=None)
     location: str | None
     description: str
     industries: list[str] | None = Field(sa_column=Column(ARRAY(String)), default=None)
@@ -411,33 +446,34 @@ class JobPostings(JobPostingBase, table=True):
         sa_column_kwargs={"onupdate": datetime.utcnow()},
     )
 
-    user_job_posting_comparisons: list["UserJobPostingComparisons"] = Relationship(
+    comparisons: list["Comparisons"] = Relationship(back_populates="job_posting")
+    llm_transactions: list["LLMTransactions"] = Relationship(
         back_populates="job_posting"
     )
 
 
-############# USER_JOB_POSTING_COMPARISONS #############
+############# COMPARISONS #############
 
 
-class UserJobPostingComparisonBase(SQLModel):
+class ComparisonBase(SQLModel):
     job_posting_id: int | None = Field(foreign_key="job_postings.id")
     user_id: int | None = Field(foreign_key="users.id")
     is_active: bool = True
     id: int = Field(default=None, primary_key=True)
 
 
-class CreateUserJobPostingComparison(SQLModel):
+class CreateComparison(SQLModel):
     job_posting_id: int
     user_id: int
 
 
-class UserJobPostingComparisonPublic(UserJobPostingComparisonBase):
+class ComparisonPublic(ComparisonBase):
     title: str
     location: str | None
     company: str
 
 
-class UserJobPostingComparisonPublicDetail(UserJobPostingComparisonPublic):
+class ComparisonPublicDetail(ComparisonPublic):
     comparison: dict | None
     resume: str | None = None
     cover_letter: str | None = None
@@ -445,11 +481,11 @@ class UserJobPostingComparisonPublicDetail(UserJobPostingComparisonPublic):
     cover_letter_paragraphs: "list[CoverLetterParagraphPublic]"
 
 
-class UserJobPostingComparisonsPublic(SQLModel):
-    data: list[UserJobPostingComparisonPublic]
+class ComparisonsPublic(SQLModel):
+    data: list[ComparisonPublic]
 
 
-class UserJobPostingComparisons(UserJobPostingComparisonBase, table=True):
+class Comparisons(ComparisonBase, table=True):
     @declared_attr  # type: ignore
     def __tablename__(cls) -> str:  # type: ignore
         return snake_case(cls.__name__)
@@ -463,22 +499,24 @@ class UserJobPostingComparisons(UserJobPostingComparisonBase, table=True):
         sa_column_kwargs={"onupdate": datetime.utcnow()},
     )
 
-    user: "Users" = Relationship(back_populates="user_job_posting_comparisons")
-    job_posting: "JobPostings" = Relationship(
-        back_populates="user_job_posting_comparisons"
-    )
+    user: "Users" = Relationship(back_populates="comparisons")
+    job_posting: "JobPostings" = Relationship(back_populates="comparisons")
     cover_letter_paragraphs: list["CoverLetterParagraphs"] = Relationship(
-        back_populates="user_job_posting_comparison"
+        back_populates="comparison"
     )
     work_experiences: list["WorkExperiences"] = Relationship(
-        back_populates="user_job_posting_comparison"
+        back_populates="comparison"
     )
     work_experience_examples: list["WorkExperienceExamples"] = Relationship(
-        back_populates="user_job_posting_comparison"
+        back_populates="comparison"
     )
 
     cover_letter_paragraph_examples: list["CoverLetterParagraphExamples"] = (
-        Relationship(back_populates="user_job_posting_comparison")
+        Relationship(back_populates="comparison")
+    )
+
+    llm_transactions: list["LLMTransactions"] = Relationship(
+        back_populates="comparison"
     )
 
     # The combination of user_id and job_posting_id should be unique
@@ -491,7 +529,7 @@ class UserJobPostingComparisons(UserJobPostingComparisonBase, table=True):
 
 
 class CoverLetterParagraphBase(SQLModel):
-    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    comparison_id: int | None = Field(foreign_key="comparisons.id")
     paragraph_number: int
     paragraph_text: str
 
@@ -517,13 +555,11 @@ class CoverLetterParagraphs(CoverLetterParagraphPublic, table=True):
         sa_column_kwargs={"onupdate": datetime.utcnow()},
     )
 
-    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
-        back_populates="cover_letter_paragraphs"
-    )
+    comparison: "Comparisons" = Relationship(back_populates="cover_letter_paragraphs")
 
 
 class WorkExperienceBase(SQLModel):
-    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    comparison_id: int | None = Field(foreign_key="comparisons.id")
     start_date: str
     end_date: str | None
     title: str
@@ -553,9 +589,7 @@ class WorkExperiences(WorkExperiencePublic, table=True):
         default_factory=datetime.utcnow,
         sa_column_kwargs={"onupdate": datetime.utcnow()},
     )
-    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
-        back_populates="work_experiences"
-    )
+    comparison: "Comparisons" = Relationship(back_populates="work_experiences")
 
 
 ############# JOB_POSTING_QUERY #############
@@ -590,7 +624,7 @@ class JobPostingQueries(SQLModel, table=True):
 
 
 class WorkExperienceExampleBase(SQLModel):
-    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    comparison_id: int | None = Field(foreign_key="comparisons.id")
     original_title: str
     original_accomplishments: list[str] | None = Field(
         sa_column=Column(ARRAY(String)), default=None
@@ -608,16 +642,14 @@ class WorkExperienceExamples(WorkExperienceExampleBase, table=True):
 
     id: int = Field(default=None, primary_key=True)
 
-    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
-        back_populates="work_experience_examples"
-    )
+    comparison: "Comparisons" = Relationship(back_populates="work_experience_examples")
 
 
 ##### Cover Letter Paragraph Examples ######
 
 
 class CoverLetterParagraphExampleBase(SQLModel):
-    comparison_id: int | None = Field(foreign_key="user_job_posting_comparisons.id")
+    comparison_id: int | None = Field(foreign_key="comparisons.id")
     paragraph_number: int
     original_paragraph_text: str
     edited_paragraph_text: str
@@ -630,6 +662,40 @@ class CoverLetterParagraphExamples(CoverLetterParagraphExampleBase, table=True):
 
     id: int = Field(default=None, primary_key=True)
 
-    user_job_posting_comparison: "UserJobPostingComparisons" = Relationship(
+    comparison: "Comparisons" = Relationship(
         back_populates="cover_letter_paragraph_examples"
     )
+
+
+###### LLM TRANSACTIONS ####
+
+
+class LLMTransactions(SQLModel, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int | None = Field(foreign_key="users.id")
+    task_name: str
+    job_posting_id: int | None = Field(foreign_key="job_postings.id", default=None)
+    comparison_id: int | None = Field(foreign_key="comparisons.id", default=None)
+    llm_id: int = Field(foreign_key="llm_info.id")
+    input_pricing: float
+    output_pricing: float
+    input_tokens: int
+    output_tokens: int
+    total_cost: float
+    transaction_date: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationships
+    user: "Users" = Relationship(back_populates="llm_transactions")
+    job_posting: "JobPostings" = Relationship(back_populates="llm_transactions")
+    comparison: "Comparisons" = Relationship(back_populates="llm_transactions")
+
+
+class LLMTransactionTypesEnum(Enum):
+    USER_CV_EXTRACTION = (1, "user_cv_extraction")
+    JOB_POSTING_EXTRACTION = (2, "job_posting_extraction")
+    CV_GENERATION = (3, "user_cv_generation")
+    COVER_LETTER_GENERATION = (4, "cover_letter_generation")

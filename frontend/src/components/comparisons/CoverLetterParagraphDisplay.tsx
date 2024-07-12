@@ -10,17 +10,17 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { EditIcon, CheckIcon, CloseIcon } from "@chakra-ui/icons";
-import { CoverLetterParagraphPublic } from "../../client/models";
+import { CoverLetterParagraph } from "../../client/models";
 import { UserComparisonServices } from "../../client/services";
 
 interface CoverLetterParagraphsProps {
-  paragraphs: CoverLetterParagraphPublic[] | undefined;
+  paragraphs: CoverLetterParagraph[] | undefined;
   onUpdate: () => void;
 }
 
 const CoverLetterParagraph: React.FC<CoverLetterParagraphsProps> = ({ paragraphs, onUpdate }) => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editedParagraphs, setEditedParagraphs] = useState<CoverLetterParagraphPublic[]>([]);
+  const [editedParagraphs, setEditedParagraphs] = useState<CoverLetterParagraph[]>([]);
   const toast = useToast();
 
   useEffect(() => {

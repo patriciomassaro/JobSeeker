@@ -5,10 +5,10 @@ from fastapi import APIRouter, HTTPException
 from app.core.utils import encode_pdf_to_base64
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
-    UserJobPostingComparisonPublic,
-    UserJobPostingComparisonsPublic,
-    UserJobPostingComparisonPublicDetail,
-    UserJobPostingComparisons,
+    ComparisonPublic,
+    ComparisonsPublic,
+    ComparisonPublicDetail,
+    Comparisons,
     Message,
     ModelParameters,
     WorkExperiencePublic,
@@ -18,33 +18,33 @@ from app.models import (
     CoverLetterParagraphs,
     CoverLetterParagraphExamples,
 )
-from app.llm.cv_builder import CVBuilder
-from app.llm.cover_letter_builder import CoverLetterBuilder
-from app.api.routes.job_postings import extract_job_postings
+from app.llm.cv_generator import CVGenerator
+from app.llm.cover_letter_generator import CoverLetterGenerator
+from app.api.routes.job_postings import extract_job_posting
 from sqlmodel import select
 
 router = APIRouter()
 
 
-@router.get("/current_user", response_model=UserJobPostingComparisonsPublic)
-def get_user_job_posting_comparisons(
+@router.get("/current_user", response_model=ComparisonsPublic)
+def get_comparisons(
     session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 30
 ):
+    """
+    Get the comparisons activated by the current user
+    """
     query = (
-        select(UserJobPostingComparisons)
-        .where(
-            UserJobPostingComparisons.user_id == current_user.id
-            and UserJobPostingComparisons.is_active
-        )
+        select(Comparisons)
+        .where(Comparisons.user_id == current_user.id and Comparisons.is_active)
         .offset(skip)
         .limit(limit)
-        .options(joinedload(UserJobPostingComparisons.job_posting))
+        .options(joinedload(Comparisons.job_posting))
     )
 
     comparisons = session.exec(query).all()
 
     public_comparisons = [
-        UserJobPostingComparisonPublic(
+        ComparisonPublic(
             **comparison.model_dump(),
             title=comparison.job_posting.title,
             company=comparison.job_posting.company,
@@ -52,29 +52,32 @@ def get_user_job_posting_comparisons(
         )
         for comparison in comparisons
     ]
-    return UserJobPostingComparisonsPublic(data=public_comparisons)
+    return ComparisonsPublic(data=public_comparisons)
 
 
-@router.get("/", response_model=UserJobPostingComparisonPublicDetail)
-def get_user_job_posting_comparison_by_id(
+@router.get("/", response_model=ComparisonPublicDetail)
+def get_comparison_by_id(
     session: SessionDep,
     current_user: CurrentUser,
     comparison_id: int | None = None,
     job_posting_id: int | None = None,
 ):
+    """Get the comparison by id or by a combination of user_id and job_posting_id"""
+
     statement = (
-        select(UserJobPostingComparisons)
-        .options(joinedload(UserJobPostingComparisons.job_posting))
-        .options(joinedload(UserJobPostingComparisons.work_experiences))  # type: ignore
-        .options(joinedload(UserJobPostingComparisons.cover_letter_paragraphs))  # type: ignore
+        select(Comparisons)
+        .options(joinedload(Comparisons.job_posting))
+        .options(joinedload(Comparisons.work_experiences))  # type: ignore
+        .options(joinedload(Comparisons.cover_letter_paragraphs))  # type: ignore
     )
 
     if comparison_id is not None:
-        statement = statement.where(UserJobPostingComparisons.id == comparison_id)
+        statement = statement.where(Comparisons.id == comparison_id)
 
     if job_posting_id is not None:
         statement = statement.where(
-            UserJobPostingComparisons.job_posting_id == job_posting_id
+            Comparisons.job_posting_id == job_posting_id
+            and Comparisons.user_id == current_user.id
         )
     comparison = session.scalars(statement).unique().one_or_none()
     if comparison:
@@ -82,7 +85,7 @@ def get_user_job_posting_comparison_by_id(
             comparison.resume = encode_pdf_to_base64(comparison.resume)  # type: ignore
         if comparison.cover_letter:
             comparison.cover_letter = encode_pdf_to_base64(comparison.cover_letter)  # type: ignore
-        return UserJobPostingComparisonPublicDetail(
+        return ComparisonPublicDetail(
             **comparison.model_dump(),
             title=comparison.job_posting.title,
             company=comparison.job_posting.company,
@@ -95,15 +98,18 @@ def get_user_job_posting_comparison_by_id(
 
 
 @router.patch("/create-activate", response_model=Message)
-def create_or_activate_user_job_posting_comparison(
+def create_or_activate_comparison(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
 ):
+    """
+    Create a comparison for the job and user if it does not exists, or activate it if it exists and is not active
+    """
     try:
-        statement = select(UserJobPostingComparisons).where(
-            UserJobPostingComparisons.user_id == current_user.id,
-            UserJobPostingComparisons.job_posting_id == job_posting_id,
+        statement = select(Comparisons).where(
+            Comparisons.user_id == current_user.id,
+            Comparisons.job_posting_id == job_posting_id,
         )
         existing_comparison = session.exec(statement).one_or_none()
 
@@ -113,7 +119,7 @@ def create_or_activate_user_job_posting_comparison(
             session.commit()
             return Message(message="Comparison Activated back again")
 
-        comparison = UserJobPostingComparisons(
+        comparison = Comparisons(
             user_id=current_user.id,
             job_posting_id=job_posting_id,
         )
@@ -129,24 +135,27 @@ def create_or_activate_user_job_posting_comparison(
         return Message(message=str(e))
 
 
-@router.post("/generate-resume", response_model=Message)
+@router.post("/generate-work-experiences", response_model=Message)
 def generate_resume(
     session: SessionDep,
     current_user: CurrentUser,
     comparison_id: int,
     model_in: ModelParameters,
 ):
+    """
+    Generate the work experiences that will be used to create the custom resume.
+    """
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
-    statement = select(UserJobPostingComparisons).where(
-        UserJobPostingComparisons.id == comparison_id,
+    statement = select(Comparisons).where(
+        Comparisons.id == comparison_id,
     )
     comparison = session.exec(statement).one_or_none()
     if not comparison or not comparison.job_posting_id:
         return Message(message="Comparison does not exist or job posting id is missing")
 
     # Ensure the job posting summary is extracted
-    extract_job_postings(
+    extract_job_posting(
         session=session,
         current_user=current_user,
         job_posting_id=comparison.job_posting_id,
@@ -157,13 +166,15 @@ def generate_resume(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Use your CVBuilder to generate the CV and cover letter
-    cv_builder = CVBuilder(
-        model_name=model_in.get_value(),  # Replace with actual model name
+    cv_generator = CVGenerator(
+        model_name=model_in.name,
         user_id=current_user.id,
         temperature=model_in.temperature,
+        job_posting_id=comparison.job_posting_id,
+        comparison_id=comparison.id,
     )
-    cv_builder.build(job_ids=[comparison.job_posting_id])
-    return Message(message="Resume generated successfully")
+    cv_generator.generate_work_experiences()
+    return Message(message="work experiences generated successfully")
 
 
 @router.post("/generate-cover-letter", response_model=Message)
@@ -175,43 +186,46 @@ def generate_cover_letter(
 ):
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
-    statement = select(UserJobPostingComparisons).where(
-        UserJobPostingComparisons.id == comparison_id,
+    statement = select(Comparisons).where(
+        Comparisons.id == comparison_id,
     )
     comparison = session.exec(statement).one_or_none()
     if not comparison or not comparison.id or not comparison.job_posting_id:
         return Message(message="Comparison does not exist")
 
     # Ensure the job posting summary is extracted
-    extract_job_postings(
+    extract_job_posting(
         session=session,
         current_user=current_user,
         job_posting_id=comparison.job_posting_id,
         model_in=model_in,
     )
-    if not current_user:
-        raise HTTPException(status_code=404, detail="User not found")
 
-    cover_letter_builder = CoverLetterBuilder(
-        model_name=model_in.get_value(),  # Replace with actual model name
+    cover_letter_generator = CoverLetterGenerator(
+        model_name=model_in.name,
         user_id=current_user.id,
         temperature=model_in.temperature,
+        job_posting_id=comparison.job_posting_id,
+        comparison_id=comparison.id,
     )
 
-    cover_letter_builder.build(job_ids=[comparison.job_posting_id])
-    return Message(message="Cover letter generated successfully")
+    cover_letter_generator.generate_cover_letter_paragraphs()
+    return Message(message="Cover letter paragraphs generated successfully")
 
 
 @router.patch("/deactivate", response_model=Message)
-def deactivate_user_job_posting_comparison(
+def deactivate_comparison(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
 ):
+    """
+    Deactivate the comparison for the job and user if it exists and is active
+    """
     try:
-        statement = select(UserJobPostingComparisons).where(
-            UserJobPostingComparisons.user_id == current_user.id,
-            UserJobPostingComparisons.job_posting_id == job_posting_id,
+        statement = select(Comparisons).where(
+            Comparisons.user_id == current_user.id,
+            Comparisons.job_posting_id == job_posting_id,
         )
         existing_comparison = session.exec(statement).one_or_none()
 
@@ -233,8 +247,6 @@ def edit_work_experience(
     current_user: CurrentUser,
     new_work_experience: WorkExperiencePublic,
 ):
-    model_in = ModelParameters(name="GPT4_O", temperature=0)
-
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -259,16 +271,16 @@ def edit_work_experience(
     session.add(old_work_experience)
     session.commit()
 
-    # Use your CVBuilder to generate the CV and cover letter
-    cv_builder = CVBuilder(
-        model_name=model_in.get_value(),  # Replace with actual model name
-        user_id=current_user.id,
-        temperature=model_in.temperature,
-    )
-    cv_builder.build(
-        job_ids=[old_work_experience.user_job_posting_comparison.job_posting_id],
-        use_llm=False,
-    )
+    # # use your cvbuilder to generate the cv and cover letter
+    # cv_builder = CVBuilder(
+    #     model_name=model_in.get_value(),  # Replace with actual model name
+    #     user_id=current_user.id,
+    #     temperature=model_in.temperature,
+    # )
+    # cv_builder.build(
+    #     job_ids=[old_work_experience.user_job_posting_comparison.job_posting_id],
+    #     use_llm=False,
+    # )
     return Message(message="Work Experience edited successfully")
 
 
@@ -280,9 +292,6 @@ def edit_cover_letter_paragraph(
 ):
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
-
-    # model parameter is just a palceholder, the cover letter builder does not use it
-    model_in = ModelParameters(name="GPT4_O", temperature=0)
 
     statement = select(CoverLetterParagraphs).where(
         CoverLetterParagraphs.id == new_cover_letter_paragraph.id,
@@ -307,14 +316,14 @@ def edit_cover_letter_paragraph(
     session.add(old_cover_letter_paragraph)
     session.commit()
 
-    cover_letter_builder = CoverLetterBuilder(
-        model_name=model_in.get_value(),  # Replace with actual model name
-        user_id=current_user.id,
-        temperature=model_in.temperature,
-    )
-
-    cover_letter_builder.build(
-        job_ids=[old_cover_letter_paragraph.user_job_posting_comparison.job_posting_id],
-        use_llm=False,
-    )
+    # cover_letter_builder = CoverLetterBuilder(
+    #     model_name=model_in.get_value(),  # Replace with actual model name
+    #     user_id=current_user.id,
+    #     temperature=model_in.temperature,
+    # )
+    #
+    # cover_letter_builder.build(
+    #     job_ids=[old_cover_letter_paragraph.user_job_posting_comparison.job_posting_id],
+    #     use_llm=False,
+    # )
     return Message(message="Cover Letter edited successfully")

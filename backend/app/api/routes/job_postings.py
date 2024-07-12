@@ -1,99 +1,121 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import select, Session, text
+from sqlmodel import select, col
+from sqlalchemy import func
 from app.api.deps import CurrentUser, SessionDep
 from app.models import (
+    ExperienceLevels,
+    InstitutionSizes,
     JobPostingsPublic,
     JobPostingPublic,
     JobPostings,
     JobQueryParams,
     Message,
     ModelParameters,
+    RemoteModalities,
+    SeniorityLevels,
+    EmploymentTypes,
+    SalaryRangeFilters,
+    Institutions,
 )
-from app.llm.job_description_extractor import JobDescriptionLLMExtractor
+from app.llm.job_posting_extractor import JobDescriptionLLMExtractor
 
 router = APIRouter()
 
 
 @router.get("/", response_model=JobPostingsPublic)
-def get_institutions(
+def get_job_postings(
     session: SessionDep, current_user: CurrentUser, params: JobQueryParams = Depends()
 ):
-    filters = []
-    query_params = {"limit": params.limit, "skip": params.skip}
-    title_similarity = "1"
-    company_similarity = "1"
-
-    if params.job_title:
-        title_similarity = "similarity(jp.title::text, :job_title)"
-        query_params["job_title"] = params.job_title  # type:ignore
-
-    if params.company_name:
-        company_similarity = "similarity(jp.company::text, :company_name)"
-        query_params["company_name"] = params.company_name  # type:ignore
-
-    filter_query = " AND ".join(filters)
-    query = text(
-        f"""
-            SELECT 
-                jp.id,
-                jp.title,
-                jp.company,
-                jp.company_url,
-                jp.location,
-                jp.description,
-                sl.description AS seniority_level,
-                et.description AS employment_type,
-                el.description AS experience_level,
-                rm.description AS remote_modality,
-                srf.description AS salary_range,
-                jp.industries,
-                jp.job_functions,
-                jp.skills,
-                jp.job_salary_min,
-                jp.job_salary_max,
-                jp.job_poster_name,
-                jp.job_poster_profile,
-                jp.summary,
-                ins.about AS institution_about,
-                ins.website AS institution_website,
-                ins.industry AS institution_industry,
-                isz.description AS institution_size,
-                ins.followers AS institution_followers,
-                ins.employees AS institution_employees,
-                ins.tagline AS institution_tagline,
-                ins.location AS institution_location,
-                ins.specialties AS institution_specialties,
-                ({title_similarity} * {company_similarity}) AS combined_similarity
-
-            FROM job_postings jp
-            LEFT JOIN institutions ins ON jp.company_url = ins.url
-            LEFT JOIN seniority_levels sl ON jp.seniority_level_id = sl.id
-            LEFT JOIN employment_types et ON jp.employment_type_id = et.id
-            LEFT JOIN experience_levels el ON jp.experience_level_id = el.id
-            LEFT JOIN remote_modalities rm ON jp.remote_modality_id = rm.id
-            LEFT JOIN salary_range_filters srf ON jp.salary_range_id = srf.id
-            LEFT JOIN institution_sizes isz ON ins.size_id = isz.id
-            ORDER BY combined_similarity DESC
-
-            LIMIT :limit
-            OFFSET :skip
-            """
+    """
+    Get job postings based on query parameters.
+    """
+    query = (
+        select(  # type: ignore
+            JobPostings.id,
+            JobPostings.title,
+            JobPostings.company,
+            JobPostings.company_url,
+            JobPostings.location,
+            JobPostings.description,
+            col(SeniorityLevels.description).label("seniority_level"),
+            col(EmploymentTypes.description).label("employment_type"),
+            col(ExperienceLevels.description).label("experience_level"),
+            col(RemoteModalities.description).label("remote_modality"),
+            col(SalaryRangeFilters.description).label("salary_range"),
+            JobPostings.industries,
+            JobPostings.job_functions,
+            JobPostings.skills,
+            JobPostings.job_salary_min,
+            JobPostings.job_salary_max,
+            JobPostings.job_poster_name,
+            JobPostings.job_poster_profile,
+            JobPostings.summary,
+            col(Institutions.about).label("institution_about"),
+            col(Institutions.website).label("institution_website"),
+            col(Institutions.industry).label("institution_industry"),
+            col(InstitutionSizes.description).label("institution_size"),
+            col(Institutions.followers).label("institution_followers"),
+            col(Institutions.employees).label("institution_employees"),
+            col(Institutions.tagline).label("institution_tagline"),
+            col(Institutions.location).label("institution_location"),
+        )
+        .join(Institutions, JobPostings.institution_id == Institutions.id, isouter=True)
+        .join(
+            SeniorityLevels,
+            JobPostings.seniority_level_id == SeniorityLevels.id,
+            isouter=True,
+        )
+        .join(
+            EmploymentTypes,
+            JobPostings.employment_type_id == EmploymentTypes.id,
+            isouter=True,
+        )
+        .join(
+            ExperienceLevels,
+            JobPostings.experience_level_id == ExperienceLevels.id,
+            isouter=True,
+        )
+        .join(
+            RemoteModalities,
+            JobPostings.remote_modality_id == RemoteModalities.id,
+            isouter=True,
+        )
+        .join(
+            SalaryRangeFilters,
+            JobPostings.salary_range_id == SalaryRangeFilters.id,
+            isouter=True,
+        )
+        .join(
+            InstitutionSizes, Institutions.size_id == InstitutionSizes.id, isouter=True
+        )
     )
 
-    results = session.execute(query, query_params).fetchall()
+    if params.job_title:
+        query = query.order_by(
+            func.similarity(JobPostings.title, params.job_title).desc()
+        )
+    if params.company_name:
+        query = query.order_by(
+            func.similarity(JobPostings.company, params.company_name).desc()
+        )
 
-    public_institutions = [JobPostingPublic(**dict(row._mapping)) for row in results]
+    query = query.offset(params.skip).limit(params.limit)
 
+    results = session.exec(query).all()
+    public_institutions = [JobPostingPublic(**dict(row)) for row in results]
     return JobPostingsPublic(data=public_institutions)
 
 
 @router.post("/extract", response_model=Message)
-def extract_job_postings(
+def extract_job_posting(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
     model_in: ModelParameters,
 ):
+    """
+    Use LLMs to extract and structure job posting data.
+    """
     if not current_user:
         return HTTPException(status_code=404, detail="User not found")
 
@@ -103,7 +125,9 @@ def extract_job_postings(
         return HTTPException(status_code=404, detail="Job posting not found")
     if not job_posting.summary:
         extractor = JobDescriptionLLMExtractor(
-            model_name=model_in.get_value(), temperature=model_in.temperature
+            model_name=model_in.name,
+            temperature=model_in.temperature,
+            user_id=current_user.id,  # type: ignore
         )
         extractor.extract_job_posting_and_write_to_db(job_id=job_posting_id)
         return Message(message="Job posting extracted successfully")

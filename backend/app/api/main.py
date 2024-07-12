@@ -5,7 +5,7 @@ from app.api.routes import (
     users,
     institutions,
     job_postings,
-    user_job_posting_comparisons,
+    comparisons,
     model_names,
 )
 
@@ -22,10 +22,10 @@ api_router.include_router(
     job_postings.router, prefix="/job-postings", tags=["job-postings"]
 )
 api_router.include_router(
-    user_job_posting_comparisons.router,
+    comparisons.router,
     prefix="/comparisons",
     tags=["comparisons"],
 )
 api_router.include_router(
-    model_names.router, prefix="/model-names", tags=["model_names"]
+    model_names.router, prefix="/model-names", tags=["model-names"]
 )

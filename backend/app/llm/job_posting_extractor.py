@@ -1,18 +1,17 @@
 import json
-import re
-from sqlmodel import Session
+from sqlmodel import Session, select, col
 from app.core.db import engine
 from app.llm.base_extractor import BaseLLMExtractor
-from app.llm import ModelNames
 from app.models import (
     JobPostings,
     Institutions,
     InstitutionSizes,
     EmploymentTypes,
     SeniorityLevels,
+    LLMTransactionTypesEnum,
 )
+from app.llm.utils import get_columns
 from pydantic import BaseModel, Field
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Responsibilities(BaseModel):
@@ -30,7 +29,7 @@ class Qualifications(BaseModel):
         None,
         description="List of optional or nice to have qualifications/experiences for the job.",
     )
-    skills: list[str] = Field(
+    skills: list[str] | None = Field(
         description="List of essential skills for the job like technologies or programming languages. This includes soft skills"
     )
     education: str | None = Field(
@@ -40,7 +39,7 @@ class Qualifications(BaseModel):
 
 class JobDescription(BaseModel):
     title: str = Field(description="Job title for the position.")
-    location: str = Field(
+    location: str | None = Field(
         description="Geographical location or 'Remote' if applicable."
     )
     involved_team: str | None = Field(
@@ -100,12 +99,10 @@ class JobPosting(BaseModel):
     )
 
 
-# Validator example within a class, to ensure pay ranges are provided correctly
-
-
 class JobDescriptionLLMExtractor(BaseLLMExtractor):
     def __init__(
         self,
+        user_id: int,
         model_name: str,
         temperature: float = 0,
         log_file_name="llm.log",
@@ -117,18 +114,15 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
             temperature=temperature,
             log_prefix=log_prefix,
             log_file_name=log_file_name,
+            user_id=user_id,
         )
 
-    def get_job_data_from_text(self, job_posting_id: int):
+    def get_job_data_from_db(self, job_posting_id: int):
         with Session(engine) as session:
-            job_posting_columns = [
-                getattr(JobPostings, attr)
-                for attr in JobPostings.__table__.columns.keys()
-                if attr
-                in [
+            job_posting_columns = get_columns(
+                JobPostings,
+                [
                     "title",
-                    "seniority_level",  # NOt the ID, but the description after joining
-                    "employment_type",  # NOt the ID, but the description after joining
                     "description",
                     "company",
                     "company_url",
@@ -137,63 +131,47 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                     "job_salary_min",
                     "job_salary_max",
                     "skills",
-                ]
-            ]
-            institution_columns = [
-                getattr(Institutions, attr)
-                for attr in Institutions.__table__.columns.keys()
-                if attr
-                in [
+                ],
+            )
+
+            institution_columns = get_columns(
+                Institutions,
+                [
                     "about",
                     "industry",
                     "specialties",
                     "followers",
                     "employees",
                     "tagline",
-                ]
-            ]
-            institution_sizes_columns = [
-                getattr(InstitutionSizes, attr)
-                for attr in InstitutionSizes.__table__.columns.keys()
-                if attr in ["description"]
-            ]
-            employment_type_columns = [
-                getattr(EmploymentTypes, attr)
-                for attr in EmploymentTypes.__table__.columns.keys()
-                if attr in ["description"]
-            ]
-            seniority_level_columns = [
-                getattr(SeniorityLevels, attr)
-                for attr in SeniorityLevels.__table__.columns.keys()
-                if attr in ["description"]
-            ]
+                ],
+            )
 
-            job_posting = (
-                session.query(
+            job_posting = session.exec(
+                select(  # type: ignore
                     *job_posting_columns,
                     *institution_columns,
-                    *institution_sizes_columns,
-                    *employment_type_columns,
-                    *seniority_level_columns,
+                    col(InstitutionSizes.description).label("institution_size"),
+                    col(EmploymentTypes.description).label("employment_type"),
+                    col(SeniorityLevels.description).label("seniority_level"),
                 )
                 .outerjoin(
                     Institutions,
-                    JobPostings.company_url == Institutions.url,
+                    JobPostings.company_url == Institutions.url,  # type: ignore
                 )
                 .outerjoin(
-                    InstitutionSizes, Institutions.size_id == InstitutionSizes.id
+                    InstitutionSizes,
+                    Institutions.size_id == InstitutionSizes.id,  # type: ignore
                 )
                 .outerjoin(
                     SeniorityLevels,
-                    JobPostings.seniority_level_id == SeniorityLevels.id,
+                    JobPostings.seniority_level_id == SeniorityLevels.id,  # type: ignore
                 )
                 .outerjoin(
                     EmploymentTypes,
-                    JobPostings.employment_type_id == EmploymentTypes.id,
+                    JobPostings.employment_type_id == EmploymentTypes.id,  # type: ignore
                 )
-                .filter(JobPostings.id == job_posting_id)
-                .first()
-            )
+                .where(JobPostings.id == job_posting_id)  # type: ignore
+            ).first()
             if job_posting:
                 return json.dumps(job_posting._asdict())
             else:
@@ -201,53 +179,26 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                     f"Job posting {job_posting_id} not found in the database."
                 )
 
-    def extract_job_posting_and_write_to_db(
-        self, job_id: int, replace_existing: bool = True
-    ):
+    def extract_job_posting_and_write_to_db(self, job_id: int):
         self.logger.info(f"Extracting job posting {job_id}...")
         with Session(engine) as session:
-            job_posting_record = (
-                session.query(JobPostings).filter(JobPostings.id == job_id).first()
-            )
-            if job_posting_record:
-                if replace_existing or job_posting_record.summary is None:
-                    job_posting = self.get_job_data_from_text(job_id)
-                    job_description_extraction = self.extract_data_from_text(
-                        text=job_posting
-                    )
-                    job_posting_record.summary = job_description_extraction
-                    session.commit()
-                    self.logger.info(f"Job posting {job_id} updated successfully.")
-                    return 1
-                else:
-                    self.logger.info(
-                        f"Job posting {job_id} already exists in the database."
-                    )
-                    return 0
+            job_posting_record = session.exec(
+                select(JobPostings).where(JobPostings.id == job_id)
+            ).first()
+            if job_posting_record and not job_posting_record.summary:
+                job_data = self.get_job_data_from_db(job_id)
+                job_posting_summary, transaction_summary = self.extract_data_from_text(
+                    text=job_data,
+                    task_type=LLMTransactionTypesEnum.JOB_POSTING_EXTRACTION,
+                    job_posting_id=job_id,
+                )
+                job_posting_record.summary = job_posting_summary
 
-    # Using ThreadPoolExecutor to parallelize the update process
-    def update_job_postings(self, job_ids: list[int], replace_existing: bool = False):
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            # Submitting tasks to the executor
-            future_to_job_posting = {
-                executor.submit(
-                    self.extract_job_posting_and_write_to_db, job_id, replace_existing
-                ): job_id
-                for job_id in job_ids
-            }
-            for future in as_completed(future_to_job_posting):
-                job_posting = future_to_job_posting[future]
-                try:
-                    result = future.result()
-                except Exception as exc:
-                    self.logger.error(
-                        f"Job posting {job_ids} generated an exception: {exc}"
-                    )
+                session.add(job_posting_record)
+                session.commit()
 
-
-if __name__ == "__main__":
-    job_description_extractor = JobDescriptionLLMExtractor(
-        model_name=ModelNames.GPT3_TURBO, temperature=0
-    )
-    ids = [3872263836]
-    job_description_data = job_description_extractor.update_job_postings(ids)
+                self.logger.info(f"Job posting {job_id} updated successfully.")
+            else:
+                self.logger.info(
+                    f"Job posting {job_id} already exists in the database."
+                )

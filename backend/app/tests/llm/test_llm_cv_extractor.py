@@ -4,7 +4,6 @@ from app.models import Users
 from sqlmodel import Session
 from unittest.mock import MagicMock, patch
 
-from app.llm import ModelNames
 
 from app.llm.cv_data_extractor import (
     Personal,
@@ -128,7 +127,7 @@ def mock_extract_text_from_pdf_bytes():
 
 
 def test_cvllmextractor(mock_extract_text_from_pdf_bytes):
-    extractor = CVLLMExtractor(model_name=ModelNames.GPT3_TURBO.value)
+    extractor = CVLLMExtractor(model_name="GPT3")
 
     mock_user = Users(
         id=1,
@@ -162,7 +161,7 @@ def test_cvllmextractor(mock_extract_text_from_pdf_bytes):
 
 # Test with no resume uploaded
 def test_cvllmextractor_no_resume(mock_extract_text_from_pdf_bytes):
-    extractor = CVLLMExtractor(model_name=ModelNames.GPT3_TURBO.value)
+    extractor = CVLLMExtractor(model_name="GPT")
 
     mock_user = Users(
         id=1,

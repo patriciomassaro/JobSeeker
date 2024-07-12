@@ -3,7 +3,7 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Users, UserCreate, UserUpdate
+from app.models import Users, UserCreate, UserUpdateMe
 
 
 def create_user(
@@ -22,7 +22,7 @@ def create_user(
     return db_obj
 
 
-def update_user(*, session: Session, db_user: Users, user_in: UserUpdate) -> Any:
+def update_user(*, session: Session, db_user: Users, user_in: UserUpdateMe) -> Any:
     user_data = user_in.model_dump(exclude_unset=True)
     extra_data = {}
     if "password" in user_data:

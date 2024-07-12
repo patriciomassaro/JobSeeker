@@ -1,11 +1,11 @@
 import re
 import os
-from sqlmodel import Session
+from sqlmodel import Session, select
 from app.core.db import engine
 from app.llm.base_extractor import BaseLLMExtractor
-from app.llm import ModelNames
+from app.logger import Logger
 from app.llm.utils import extract_text_from_pdf_bytes
-from app.models import Users
+from app.models import Users, LLMTransactions, LLMTransactionTypesEnum
 from pydantic import BaseModel, Field, validator
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -88,50 +88,48 @@ class CVLLMExtractor(BaseLLMExtractor):
     def __init__(
         self,
         model_name: str,
+        user_id: int,
         temperature: float = 0,
         prefix="CVExtractor",
         log_file_name="llm.log",
     ):
         super().__init__(
             model_name=model_name,
-            pydantic_object=CV,
+            pydantic_object=CV,  # type: ignore
             temperature=temperature,
-            log_prefix=prefix,
-            log_file_name=log_file_name,
+            user_id=user_id,
         )
+        self.logger = Logger(prefix=prefix, log_file_name=log_file_name).get_logger()
 
-    def extract_cv_and_write_to_db(self, user_id: int):
-        self.logger.info(f"Extracting CV data for user {user_id}")
+    def extract_cv_and_write_to_db(self):
+        self.logger.info(f"Extracting CV data for user {self.user_id}")
         with Session(engine) as session:
-            user_record = session.query(Users).filter(Users.id == user_id).first()
-            if user_record:
-                if user_record.resume:
-                    cv_text = extract_text_from_pdf_bytes(user_record.resume)
-                    resume_summary = self.extract_data_from_text(text=cv_text)
-                    user_record.parsed_personal = resume_summary.get("personal", {})
-                    user_record.parsed_work_experiences = resume_summary.get(
-                        "work_experiences", {}
-                    )
-                    user_record.parsed_educations = resume_summary.get("educations", {})
-                    user_record.parsed_skills = resume_summary.get("skills", [])
-                    user_record.parsed_languages = resume_summary.get("languages", {})
-                    session.commit()
-                    self.logger.info(
-                        f"Successfully extracted CV data for user {user_id}"
-                    )
-                    return 1
-                else:
-                    self.logger.info(f"User {user_id} has no resume")
-                    return 0
+            user_record = session.exec(
+                select(Users).where(Users.id == self.user_id)
+            ).first()
+
+            if user_record and user_record.resume:
+                cv_text = extract_text_from_pdf_bytes(user_record.resume)
+                resume_summary, transaction_summary = self.extract_data_from_text(
+                    text=cv_text, task_type=LLMTransactionTypesEnum.USER_CV_EXTRACTION
+                )
+
+                # Update user record with extracted data
+                user_record.parsed_personal = resume_summary.get("personal", {})
+                user_record.parsed_work_experiences = resume_summary.get(
+                    "work_experiences", {}
+                )
+                user_record.parsed_educations = resume_summary.get("educations", {})
+                user_record.parsed_skills = resume_summary.get("skills", [])
+                user_record.parsed_languages = resume_summary.get("languages", {})
+
+                session.add(user_record)
+                session.commit()
+
+                self.logger.info(
+                    f"Successfully extracted CV data for user {self.user_id}"
+                )
+                return 1
             else:
-                self.logger.error(f"User with id {user_id} not found.")
+                self.logger.info(f"User {self.user_id} has no resume")
                 return 0
-
-
-# Example usage
-if __name__ == "__main__":
-    cv_extractor = CVLLMExtractor(model_name=ModelNames.GPT3_TURBO.value, temperature=0)
-    result = cv_extractor.extract_cv_and_write_to_db(
-        user_id=123
-    )  # Replace with an actual user ID
-    print(f"Extraction result: {result}")

@@ -13,6 +13,7 @@ from app.models import (
     RemoteModalitiesEnum,
     EmploymentTypesEnum,
     ExperienceLevelsEnum,
+    LLMInfoEnum,
     InstitutionSizes,
     TimeFilters,
     SeniorityLevels,
@@ -20,6 +21,7 @@ from app.models import (
     RemoteModalities,
     EmploymentTypes,
     ExperienceLevels,
+    LLMInfo,
 )
 
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
@@ -66,3 +68,23 @@ def init_db(session: Session) -> None:
                 session.add(row)
                 session.commit()
                 session.refresh(row)
+
+    for enum_value in LLMInfoEnum:
+        print(enum_value)
+        print(enum_value.value)
+        print(len(enum_value.value))
+        exists = session.exec(
+            select(LLMInfo).where(LLMInfo.id == enum_value.value[0])
+        ).first()
+        if not exists:
+            row = LLMInfo(
+                id=enum_value.value[0],
+                public_name=enum_value.value[1],
+                api_name=enum_value.value[2],
+                provider=enum_value.value[3],
+                input_pricing=enum_value.value[4],
+                output_pricing=enum_value.value[5],
+            )
+            session.add(row)
+            session.commit()
+            session.refresh(row)

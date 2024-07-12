@@ -8,10 +8,9 @@ from app.api.deps import (
 )
 from app.core.security import get_password_hash, verify_password
 from app.models import (
-    UpdatePassword,
+    UserPassword,
     UserCreate,
-    UserPublic,
-    UserUpdate,
+    UserUpdateMe,
     UserPublicMe,
     Message,
     ModelParameters,
@@ -22,7 +21,7 @@ from app.llm.cv_data_extractor import CVLLMExtractor
 router = APIRouter()
 
 
-@router.post("/", response_model=UserPublic)
+@router.post("/", response_model=UserPublicMe)
 def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
@@ -39,7 +38,7 @@ def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
     return user
 
 
-@router.post("/me/upload-resume", response_model=Message)
+@router.patch("/me/upload-resume", response_model=Message)
 async def upload_resume(
     *, session: SessionDep, current_user: CurrentUser, file: UploadFile = File(...)
 ) -> Any:
@@ -61,9 +60,9 @@ async def upload_resume(
     return Message(message="Resume uploaded successfully")
 
 
-@router.patch("/me", response_model=UserPublic)
+@router.patch("/me", response_model=UserPublicMe)
 def update_user_me(
-    *, session: SessionDep, user_in: UserUpdate, current_user: CurrentUser
+    *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
 ) -> Any:
     """
     Update own user.
@@ -87,7 +86,7 @@ def update_user_me(
 
 @router.patch("/me/password", response_model=Message)
 def update_password_me(
-    *, session: SessionDep, body: UpdatePassword, current_user: CurrentUser
+    *, session: SessionDep, body: UserPassword, current_user: CurrentUser
 ) -> Any:
     """
     Update own password.
@@ -117,9 +116,11 @@ def parse_resume(
     if not current_user.resume:
         raise HTTPException(status_code=400, detail="No resume uploaded")
     cv_extractor = CVLLMExtractor(
-        model_name=model_in.get_value(), temperature=model_in.temperature
+        model_name=model_in.name,
+        temperature=model_in.temperature,
+        user_id=current_user.id,  # type: ignore
     )
-    cv_extractor.extract_cv_and_write_to_db(user_id=current_user.id)  # type: ignore
+    cv_extractor.extract_cv_and_write_to_db()  # type: ignore
 
     return Message(message="Resume parsed successfully")
 
@@ -130,7 +131,7 @@ def read_user_me(current_user: CurrentUser) -> Any:
     Get current user.
     """
     if current_user.resume:
-        current_user.resume = encode_pdf_to_base64(current_user.resume)
+        current_user.resume = encode_pdf_to_base64(current_user.resume)  # type: ignore
     return current_user
 
 

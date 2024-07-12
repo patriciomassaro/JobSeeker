@@ -8,7 +8,7 @@ from app import crud
 from app.api.deps import CurrentUser, SessionDep
 from app.core import security
 from app.core.config import settings
-from app.models import UserPublic, Token
+from app.models import UserPublicMe, Token
 
 router = APIRouter()
 
@@ -33,7 +33,7 @@ def login_access_token(
     )
 
 
-@router.post("/login/test-token", response_model=UserPublic)
+@router.post("/login/test-token", response_model=UserPublicMe)
 def test_token(current_user: CurrentUser) -> Any:
     """
     Test access token

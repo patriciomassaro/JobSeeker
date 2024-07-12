@@ -81,9 +81,9 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER?Variable not set}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS?Variable not set}
-      - OPENAI_API_KEY= ${OPENAI_API_KEY?Variable not set}
-      - GROQ_API_KEY= ${GROQ_API_KEY?Variable not set}
-      - ANTHROPIC_API_KEY= ${ANTHROPIC_API_KEY?Variable not set}
+      - OPENAI_API_KEY=${OPENAI_API_KEY?Variable not set}
+      - GROQ_API_KEY=${GROQ_API_KEY?Variable not set}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY?Variable not set}
 
 
     build:

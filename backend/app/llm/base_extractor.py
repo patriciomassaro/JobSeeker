@@ -1,7 +1,8 @@
 import json
 from pydantic import BaseModel
 from app.logger import Logger
-from app.llm import LLMInitializer
+from app.llm import LLMInitializer, LLMTransactionSummary
+from app.models import LLMTransactionTypesEnum
 
 
 class BaseLLMExtractor:
@@ -9,40 +10,46 @@ class BaseLLMExtractor:
         self,
         model_name: str,
         pydantic_object: BaseModel,
+        user_id: int,
         temperature: float = 0,
         log_file_name="llm.log",
         log_prefix="LLMExtractor",
     ):
-        self.llm_init = LLMInitializer(model_name=model_name, temperature=temperature)
+        self.user_id = user_id
+        self.llm = LLMInitializer(
+            model_name=model_name, temperature=temperature, user_id=user_id
+        )
         self.pydantic_object = pydantic_object
         self.logger = Logger(
             prefix=log_prefix, log_file_name=log_file_name
         ).get_logger()
+        self.system_prompt = f"""
+            You are an expert extraction algorithm. If you do not know the value of an attribute asked to extract, return null for the attribute's value.
 
-    def get_prompt(self, text: str) -> str:
-        return f"""
-        You are an expert extraction algorithm. If you do not know the value of an attribute asked to extract, return null for the attribute's value.
-        
-        Please extract the following information from the given text and format it as a JSON object:
-        
-        {self.pydantic_object.schema_json()}
-        
-        Text to extract from:
-        {text}
-        """
+            Please extract the following information from the given text and format it as a JSON object:
+             {self.pydantic_object.model_json_schema()}
 
-    def extract_data_from_text(self, text: str) -> dict:
-        prompt = self.get_prompt(text)
-        messages = [{"role": "user", "content": prompt}]
 
-        response = self.llm_init.get_completion(messages)
+            Only respond the extracted data in JSON format, without any markdown notation.
+            """
 
+    def extract_data_from_text(
+        self,
+        text: str,
+        task_type: LLMTransactionTypesEnum,
+        job_posting_id: int | None = None,
+    ) -> tuple[dict, LLMTransactionSummary]:
+        transaction = self.llm.get_completion(
+            system_prompt=self.system_prompt,
+            user_prompt=f"Text to extract from: {text}",
+            task_type=task_type,
+            job_posting_id=job_posting_id,
+        )
         try:
-            extracted_data = json.loads(response)
-            # Validate the extracted data against the Pydantic model
-            validated_data = self.pydantic_object(**extracted_data)
-            self.logger.info(f"Extracted and validated data from text")
-            return validated_data.dict()
+            extracted_data = json.loads(transaction.text)
+            validated_data = self.pydantic_object(**extracted_data)  # type: ignore
+            self.logger.info("Extracted and validated data from text")
+            return validated_data.dict(), transaction
         except json.JSONDecodeError:
             self.logger.error("Failed to parse JSON from LLM response")
             raise

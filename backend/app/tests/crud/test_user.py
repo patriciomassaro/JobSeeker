@@ -3,7 +3,7 @@ from sqlmodel import Session
 
 from app import crud
 from app.core.security import verify_password
-from app.models import Users, UserCreate, UserUpdate
+from app.models import Users, UserCreate, UserUpdateMe
 from app.tests.utils.utils import random_email, random_lower_string
 from app.tests.utils.user import create_random_user
 
@@ -48,7 +48,7 @@ def test_get_user(db: Session) -> None:
 def test_update_user(db: Session) -> None:
     user, username, password, name = create_random_user(db)
     new_password = random_lower_string()
-    user_in_update = UserUpdate(password=new_password)
+    user_in_update = UserUpdateMe(password=new_password)
     if user.id is not None:
         crud.update_user(session=db, db_user=user, user_in=user_in_update)
     user_2 = db.get(Users, user.id)

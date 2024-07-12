@@ -1,8 +1,8 @@
 """Initial migration
 
-Revision ID: 1c3077bde91d
+Revision ID: 26d431ef33ee
 Revises: 
-Create Date: 2024-05-23 18:42:37.063982
+Create Date: 2024-07-02 22:19:43.970471
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import sqlmodel.sql.sqltypes
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '1c3077bde91d'
+revision = '26d431ef33ee'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -32,6 +32,15 @@ def upgrade():
     op.create_table('institution_sizes',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('llm_info',
+    sa.Column('public_name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('api_name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('provider', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('input_pricing', sa.Float(), nullable=False),
+    sa.Column('output_pricing', sa.Float(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('remote_modalities',
@@ -57,9 +66,6 @@ def upgrade():
     op.create_table('users',
     sa.Column('username', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('date_created', sa.DateTime(), nullable=False),
-    sa.Column('date_updated', sa.DateTime(), nullable=False),
     sa.Column('resume', sa.LargeBinary(), nullable=True),
     sa.Column('parsed_personal', postgresql.JSON(astext_type=sa.Text()), nullable=True),
     sa.Column('parsed_work_experiences', postgresql.JSON(astext_type=sa.Text()), nullable=True),
@@ -67,7 +73,11 @@ def upgrade():
     sa.Column('parsed_languages', postgresql.JSON(astext_type=sa.Text()), nullable=True),
     sa.Column('parsed_skills', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('additional_info', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('credits', sa.Float(), nullable=False),
+    sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('password', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('date_created', sa.DateTime(), nullable=False),
+    sa.Column('date_updated', sa.DateTime(), nullable=False),
     sa.Column('is_superuser', sa.Boolean(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
@@ -78,47 +88,19 @@ def upgrade():
     sa.Column('about', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('website', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('industry', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('indsutry', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('size', sa.Integer(), nullable=False),
-    sa.Column('followers', sa.Integer(), nullable=False),
+    sa.Column('size_id', sa.Integer(), nullable=False),
+    sa.Column('followers', sa.Integer(), nullable=True),
+    sa.Column('employees', sa.Integer(), nullable=True),
+    sa.Column('tagline', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('location', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('specialties', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('date_created', sa.DateTime(), nullable=False),
     sa.Column('date_updated', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['size'], ['institution_sizes.id'], ),
+    sa.ForeignKeyConstraint(['size_id'], ['institution_sizes.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('job_postings',
-    sa.Column('title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('company', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('company_url', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('location', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('seniority_level', sa.Integer(), nullable=True),
-    sa.Column('employment_type', sa.Integer(), nullable=True),
-    sa.Column('experience_level', sa.Integer(), nullable=True),
-    sa.Column('salary_range', sa.Integer(), nullable=True),
-    sa.Column('remote_modality', sa.Integer(), nullable=True),
-    sa.Column('industries', postgresql.ARRAY(sa.String()), nullable=True),
-    sa.Column('job_functions', postgresql.ARRAY(sa.String()), nullable=True),
-    sa.Column('skills', postgresql.ARRAY(sa.String()), nullable=True),
-    sa.Column('job_salary_min', sa.Integer(), nullable=True),
-    sa.Column('job_salary_max', sa.Integer(), nullable=True),
-    sa.Column('job_poster_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('job_poster_profile', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('summary', postgresql.JSON(astext_type=sa.Text()), nullable=True),
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('date_created', sa.DateTime(), nullable=False),
-    sa.Column('date_updated', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['employment_type'], ['employment_types.id'], ),
-    sa.ForeignKeyConstraint(['experience_level'], ['experience_levels.id'], ),
-    sa.ForeignKeyConstraint(['remote_modality'], ['remote_modalities.id'], ),
-    sa.ForeignKeyConstraint(['salary_range'], ['salary_range_filters.id'], ),
-    sa.ForeignKeyConstraint(['seniority_level'], ['seniority_levels.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_table('jobpostingqueries',
+    op.create_table('job_posting_queries',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('url', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('keywords', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -136,17 +118,60 @@ def upgrade():
     sa.ForeignKeyConstraint(['time_filter_id'], ['time_filters.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('user_job_posting_comparisons',
-    sa.Column('job_posting_id', sa.Integer(), nullable=True),
-    sa.Column('comparison', postgresql.JSON(astext_type=sa.Text()), nullable=True),
-    sa.Column('cv_pdf', sa.LargeBinary(), nullable=True),
-    sa.Column('cover_letter_pdf', sa.LargeBinary(), nullable=True),
+    op.create_table('job_postings',
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('company', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('company_url', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('location', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('industries', postgresql.ARRAY(sa.String()), nullable=True),
+    sa.Column('job_functions', postgresql.ARRAY(sa.String()), nullable=True),
+    sa.Column('skills', postgresql.ARRAY(sa.String()), nullable=True),
+    sa.Column('job_salary_min', sa.Integer(), nullable=True),
+    sa.Column('job_salary_max', sa.Integer(), nullable=True),
+    sa.Column('job_poster_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('job_poster_profile', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('summary', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+    sa.Column('linkedin_id', sa.BigInteger(), nullable=True),
+    sa.Column('seniority_level_id', sa.Integer(), nullable=True),
+    sa.Column('employment_type_id', sa.Integer(), nullable=True),
+    sa.Column('experience_level_id', sa.Integer(), nullable=True),
+    sa.Column('salary_range_id', sa.Integer(), nullable=True),
+    sa.Column('remote_modality_id', sa.Integer(), nullable=True),
+    sa.Column('html', sa.TEXT(), nullable=True),
+    sa.Column('date_created', sa.DateTime(), nullable=False),
+    sa.Column('date_updated', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['employment_type_id'], ['employment_types.id'], ),
+    sa.ForeignKeyConstraint(['experience_level_id'], ['experience_levels.id'], ),
+    sa.ForeignKeyConstraint(['remote_modality_id'], ['remote_modalities.id'], ),
+    sa.ForeignKeyConstraint(['salary_range_id'], ['salary_range_filters.id'], ),
+    sa.ForeignKeyConstraint(['seniority_level_id'], ['seniority_levels.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('linkedin_id', name='uq_linkedin_id')
+    )
+    op.create_table('comparisons',
+    sa.Column('job_posting_id', sa.Integer(), nullable=True),
     sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('comparison', postgresql.JSON(astext_type=sa.Text()), nullable=True),
+    sa.Column('resume', sa.LargeBinary(), nullable=True),
+    sa.Column('cover_letter', sa.LargeBinary(), nullable=True),
     sa.Column('date_created', sa.DateTime(), nullable=False),
     sa.Column('date_updated', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['job_posting_id'], ['job_postings.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'job_posting_id', name='uq_user_id_job_posting_id')
+    )
+    op.create_table('cover_letter_paragraph_examples',
+    sa.Column('comparison_id', sa.Integer(), nullable=True),
+    sa.Column('paragraph_number', sa.Integer(), nullable=False),
+    sa.Column('original_paragraph_text', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('edited_paragraph_text', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['comparison_id'], ['comparisons.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('cover_letter_paragraphs',
@@ -156,20 +181,49 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('date_created', sa.DateTime(), nullable=False),
     sa.Column('date_updated', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['comparison_id'], ['user_job_posting_comparisons.id'], ),
+    sa.ForeignKeyConstraint(['comparison_id'], ['comparisons.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('llm_transactions',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('task_name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('job_posting_id', sa.Integer(), nullable=True),
+    sa.Column('comparison_id', sa.Integer(), nullable=True),
+    sa.Column('llm_id', sa.Integer(), nullable=False),
+    sa.Column('input_pricing', sa.Float(), nullable=False),
+    sa.Column('output_pricing', sa.Float(), nullable=False),
+    sa.Column('input_tokens', sa.Integer(), nullable=False),
+    sa.Column('output_tokens', sa.Integer(), nullable=False),
+    sa.Column('total_cost', sa.Float(), nullable=False),
+    sa.Column('transaction_date', sa.DateTime(), nullable=False),
+    sa.ForeignKeyConstraint(['comparison_id'], ['comparisons.id'], ),
+    sa.ForeignKeyConstraint(['job_posting_id'], ['job_postings.id'], ),
+    sa.ForeignKeyConstraint(['llm_id'], ['llm_info.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('work_experience_examples',
+    sa.Column('comparison_id', sa.Integer(), nullable=True),
+    sa.Column('original_title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('original_accomplishments', postgresql.ARRAY(sa.String()), nullable=True),
+    sa.Column('edited_title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('edited_accomplishments', postgresql.ARRAY(sa.String()), nullable=True),
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.ForeignKeyConstraint(['comparison_id'], ['comparisons.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('work_experiences',
     sa.Column('comparison_id', sa.Integer(), nullable=True),
-    sa.Column('start_year', sa.Integer(), nullable=False),
-    sa.Column('end_year', sa.Integer(), nullable=True),
+    sa.Column('start_date', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('end_date', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('title', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('company', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('accomplishments', postgresql.ARRAY(sa.String()), nullable=True),
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('date_created', sa.DateTime(), nullable=False),
     sa.Column('date_updated', sa.DateTime(), nullable=False),
-    sa.ForeignKeyConstraint(['comparison_id'], ['user_job_posting_comparisons.id'], ),
+    sa.ForeignKeyConstraint(['comparison_id'], ['comparisons.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
@@ -178,10 +232,13 @@ def upgrade():
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_table('work_experiences')
+    op.drop_table('work_experience_examples')
+    op.drop_table('llm_transactions')
     op.drop_table('cover_letter_paragraphs')
-    op.drop_table('user_job_posting_comparisons')
-    op.drop_table('jobpostingqueries')
+    op.drop_table('cover_letter_paragraph_examples')
+    op.drop_table('comparisons')
     op.drop_table('job_postings')
+    op.drop_table('job_posting_queries')
     op.drop_table('institutions')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_table('users')
@@ -189,6 +246,7 @@ def downgrade():
     op.drop_table('seniority_levels')
     op.drop_table('salary_range_filters')
     op.drop_table('remote_modalities')
+    op.drop_table('llm_info')
     op.drop_table('institution_sizes')
     op.drop_table('experience_levels')
     op.drop_table('employment_types')

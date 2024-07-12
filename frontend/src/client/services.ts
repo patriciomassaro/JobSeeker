@@ -297,7 +297,7 @@ export class UsersService {
   public static uploadResume(data: TDataUserUploadResume): CancelablePromise<Message> {
     const { formData } = data;
     return __request(OpenAPI, {
-      method: 'POST',
+      method: 'PATCH',
       url: '/api/v1/users/me/upload-resume',
       body: formData,
       mediaType: 'multipart/form-data',
