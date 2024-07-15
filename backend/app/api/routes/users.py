@@ -16,7 +16,7 @@ from app.models import (
     ModelParameters,
 )
 
-from app.llm.cv_data_extractor import CVLLMExtractor
+from app.llm.resume_data_extractor import ResumeLLMExtractor
 
 router = APIRouter()
 
@@ -115,7 +115,7 @@ def parse_resume(
         return HTTPException(status_code=404, detail="User not found")
     if not current_user.resume:
         raise HTTPException(status_code=400, detail="No resume uploaded")
-    cv_extractor = CVLLMExtractor(
+    cv_extractor = ResumeLLMExtractor(
         model_name=model_in.name,
         temperature=model_in.temperature,
         user_id=current_user.id,  # type: ignore

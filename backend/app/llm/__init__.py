@@ -151,14 +151,3 @@ class LLMInitializer:
             transaction, task_type, job_posting_id, comparison_id
         )
         return transaction
-
-
-if __name__ == "__main__":
-    llm = LLMInitializer("CLAUDE_SONNET", user_id=1, temperature=0.3)
-    print(
-        llm.get_completion(
-            system_prompt="You are an assistant",
-            user_prompt="Hello How are you?",
-            task_type=LLMTransactionTypesEnum.USER_CV_EXTRACTION,
-        )
-    )

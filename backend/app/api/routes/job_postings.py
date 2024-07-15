@@ -102,8 +102,8 @@ def get_job_postings(
     query = query.offset(params.skip).limit(params.limit)
 
     results = session.exec(query).all()
-    public_institutions = [JobPostingPublic(**dict(row)) for row in results]
-    return JobPostingsPublic(data=public_institutions)
+    jobs = [JobPostingPublic(**row._mapping) for row in results]
+    return JobPostingsPublic(data=jobs)
 
 
 @router.post("/extract", response_model=Message)

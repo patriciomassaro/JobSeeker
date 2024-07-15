@@ -7,6 +7,7 @@ interface JobListProps {
   onJobSelect: (job: JobPosting) => void;
 }
 const JobList: React.FC<JobListProps> = ({ jobPostings, onJobSelect }) => {
+  console.log(jobPostings)
   return (
     <List spacing={3}>
       {jobPostings.data.map((job: JobPosting) => (

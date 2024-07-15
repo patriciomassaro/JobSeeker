@@ -267,27 +267,6 @@ export class UsersService {
     });
   }
 
-  /**
-   * Read User By Id
-   * Get a specific user by id.
-   * @returns UserPublic Successful Response
-   * @throws ApiError
-   */
-  public static readUserById(data: TDataReadUserById): CancelablePromise<UserPublicMe> {
-    const {
-      userId,
-    } = data;
-    return __request(OpenAPI, {
-      method: 'GET',
-      url: '/api/v1/users/{user_id}',
-      path: {
-        user_id: userId
-      },
-      errors: {
-        422: `Validation Error`,
-      },
-    });
-  }
 
   /**
   * Upload CV of the current user
@@ -440,10 +419,10 @@ export class UserComparisonServices {
     });
   }
 
-  public static generateComparisonResume(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
+  public static generateWorkExperiences(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
     return __request(OpenAPI, {
       method: 'POST',
-      url: `/api/v1/comparisons/generate-resume?comparison_id=${data.comparison_id}`,
+      url: `/api/v1/comparisons/generate-work-experiences?comparison_id=${data.comparison_id}`,
       body: parameters,
       errors: {
         500: `Server Error`,
@@ -451,10 +430,10 @@ export class UserComparisonServices {
     });
   }
 
-  public static generateComparisonCoverLetter(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
+  public static generateCoverLetterParagraphs(data: { comparison_id: number }, parameters: ModelParameters): CancelablePromise<Message> {
     return __request(OpenAPI, {
       method: 'POST',
-      url: `/api/v1/comparisons/generate-cover-letter?comparison_id=${data.comparison_id}`,
+      url: `/api/v1/comparisons/generate-cover-letter-paragraphs?comparison_id=${data.comparison_id}`,
       body: parameters,
       errors: {
         500: `Server Error`,
@@ -497,6 +476,25 @@ export class UserComparisonServices {
       body: data.newCoverLetterParagraph,
       errors: {
         404: `User or Cover Letter Paragraph not found`,
+        500: `Server Error`,
+      },
+    });
+  }
+  public static buildResume(data: { comparison_id: number }): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'PATCH',
+      url: `/api/v1/comparisons/build-resume?comparison_id=${data.comparison_id}`,
+      errors: {
+        500: `Server Error`,
+      },
+    });
+  }
+
+  public static buildCoverLetter(data: { comparison_id: number }): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'PATCH',
+      url: `/api/v1/comparisons/build-cover-letter?comparison_id=${data.comparison_id}`,
+      errors: {
         500: `Server Error`,
       },
     });

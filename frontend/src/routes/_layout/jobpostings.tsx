@@ -60,19 +60,21 @@ function JobPostingsHome() {
       });
       setUserComparison(comparison);
     } catch (error) {
-      // Check if the error is a response with a status property
-      if (error && typeof error === 'object' && 'status' in error) {
-        if (error.status === 404) {
-          // Comparison not found
+      // Check if the error is an instance of Error and has a name property
+      if (error instanceof Error && 'name' in error) {
+        // Check if it's a 404 error
+        if (error.name === 'ApiError' && (error as any).status === 404) {
+          // Silently set comparison to null for 404 errors
           setUserComparison(null);
           return;
         }
       }
-      // Handle other errors
+      // For other errors, you might want to log them or handle them differently
+      console.error("Unexpected error fetching comparison status:", error);
       setUserComparison(null);
-      // You might want to set an error state here or handle it differently
     }
   };
+
   useEffect(() => {
     fetchJobPostings();
   }, [currentPage, jobTitle, companyName]);

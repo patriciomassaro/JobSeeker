@@ -197,7 +197,7 @@ class CoverLetterGenerator(BaseGenerator):
                     CoverLetterParagraphs.comparison_id == comparison.id
                 )
             ).all()
-            session.delete(old_paragraphs) if old_paragraphs else None
+            [session.delete(old_para) for old_para in old_paragraphs]
 
             # Insert new paragraphs
             new_paragraphs = [
@@ -215,9 +215,6 @@ class CoverLetterGenerator(BaseGenerator):
     def generate_cover_letter_paragraphs(self):
         system_prompt = self._create_system_prompt()
         user_prompt = self._create_user_prompt()
-
-        print("SYSTEM PROMPT: \n\n", system_prompt)
-        print("USER PROMPT: \n\n", user_prompt)
 
         cover_letter_paragraphs, transaction_summary = self._generate_and_parse_content(
             system_prompt=system_prompt,

@@ -39,9 +39,7 @@ class WorkExperience(BaseModel):
     company_name: str = Field(
         description="Name of the company where the position was held."
     )
-    start_date: str = Field(
-        description="Start date of the employment in YYYY-MM format."
-    )
+    start_date: str = Field(description="Start date of the employment in YYYY format.")
     end_date: str | None = Field(
         None, description="End date of the employment in YYYY-MM format, if applicable."
     )
@@ -84,7 +82,7 @@ class CV(BaseModel):
     )
 
 
-class CVLLMExtractor(BaseLLMExtractor):
+class ResumeLLMExtractor(BaseLLMExtractor):
     def __init__(
         self,
         model_name: str,

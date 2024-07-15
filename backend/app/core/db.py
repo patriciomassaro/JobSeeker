@@ -1,5 +1,7 @@
+from sqlalchemy.engine import create
 from sqlmodel import create_engine, select, Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import text
 
 from app import crud
 from app.core.config import settings
@@ -28,7 +30,14 @@ engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def create_pg_trgm_extension():
+    with engine.connect() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+        connection.commit()
+
+
 def init_db(session: Session) -> None:
+    create_pg_trgm_extension()
     user = session.exec(
         select(Users).where(Users.username == settings.FIRST_SUPERUSER)
     ).first()
@@ -70,9 +79,6 @@ def init_db(session: Session) -> None:
                 session.refresh(row)
 
     for enum_value in LLMInfoEnum:
-        print(enum_value)
-        print(enum_value.value)
-        print(len(enum_value.value))
         exists = session.exec(
             select(LLMInfo).where(LLMInfo.id == enum_value.value[0])
         ).first()

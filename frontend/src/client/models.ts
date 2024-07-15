@@ -68,8 +68,6 @@ export type UserPublicMe = {
 };
 
 
-
-
 export type UserRegister = {
   email: string;
   password: string;
@@ -109,8 +107,7 @@ export type ValidationError = {
 };
 
 export type ModelNames = {
-  llm_alias: string;
-  llm_value: string;
+  public_name: string;
 }
 
 

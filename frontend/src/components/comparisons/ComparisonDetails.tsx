@@ -29,76 +29,120 @@ const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
 }) => {
   const [model, setModel] = useState<string>("");
   const [temperature, setTemperature] = useState<number>(0.5);
-  const [isGeneratingResume, setIsGeneratingResume] = useState(false);
-  const [isGeneratingCoverLetter, setIsGeneratingCoverLetter] = useState(false);
+  const [isGeneratingWorkExperiences, setIsGeneratingWorkExperiences] = useState(false);
+  const [isGeneratingCoverLetterParagraphs, setIsGeneratingCoverLetterParagraphs] = useState(false);
+  const [isBuildingResume, setIsBuildingResume] = useState(false);
+  const [isBuildingCoverLetter, setIsBuildingCoverLetter] = useState(false);
   const toast = useToast();
 
-  const handleGenerateResume = () => {
-    setIsGeneratingResume(true);
-    UserComparisonServices.generateComparisonResume(
-      { comparison_id: comparison.id },
-      {
-        name: model,
-        temperature: temperature,
-      }
-    )
-      .then((response) => {
-        toast({
-          title: "Resume Generated",
-          description: response.message,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-        refreshComparisonData();
-      })
-      .catch((error) => {
-        console.error("Error generating resume:", error);
-        toast({
-          title: "Error",
-          description: "Failed to generate resume",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      })
-      .finally(() => {
-        setIsGeneratingResume(false);
+  const handleGenerateWorkExperiences = async () => {
+    setIsGeneratingWorkExperiences(true);
+    try {
+      const response = await UserComparisonServices.generateWorkExperiences(
+        { comparison_id: comparison.id },
+        { name: model, temperature: temperature }
+      );
+      toast({
+        title: "Work Experiences Generated",
+        description: response.message,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
       });
+      await handleBuildResume();
+    } catch (error) {
+      console.error("Error generating work experiences:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate work experiences",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsGeneratingWorkExperiences(false);
+    }
   };
 
-  const handleGenerateCoverLetter = () => {
-    setIsGeneratingCoverLetter(true);
-    UserComparisonServices.generateComparisonCoverLetter(
-      { comparison_id: comparison.id },
-      {
-        name: model,
-        temperature: temperature,
-      }
-    )
-      .then((response) => {
-        toast({
-          title: "Cover Letter Generated",
-          description: response.message,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-        refreshComparisonData();
-      })
-      .catch((error) => {
-        console.error("Error generating cover letter:", error);
-        toast({
-          title: "Error",
-          description: "Failed to generate cover letter",
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      })
-      .finally(() => {
-        setIsGeneratingCoverLetter(false);
+  const handleGenerateCoverLetterParagraphs = async () => {
+    setIsGeneratingCoverLetterParagraphs(true);
+    try {
+      const response = await UserComparisonServices.generateCoverLetterParagraphs(
+        { comparison_id: comparison.id },
+        { name: model, temperature: temperature }
+      );
+      toast({
+        title: "Cover Letter Paragraphs Generated",
+        description: response.message,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
       });
+      await handleBuildCoverLetter();
+    } catch (error) {
+      console.error("Error generating cover letter paragraphs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate cover letter paragraphs",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsGeneratingCoverLetterParagraphs(false);
+    }
+  };
+
+  const handleBuildResume = async () => {
+    setIsBuildingResume(true);
+    try {
+      const response = await UserComparisonServices.buildResume({ comparison_id: comparison.id });
+      toast({
+        title: "Resume Built",
+        description: response.message,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      refreshComparisonData();
+    } catch (error) {
+      console.error("Error building resume:", error);
+      toast({
+        title: "Error",
+        description: "Failed to build resume",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsBuildingResume(false);
+    }
+  };
+
+  const handleBuildCoverLetter = async () => {
+    setIsBuildingCoverLetter(true);
+    try {
+      const response = await UserComparisonServices.buildCoverLetter({ comparison_id: comparison.id });
+      toast({
+        title: "Cover Letter Built",
+        description: response.message,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      refreshComparisonData();
+    } catch (error) {
+      console.error("Error building cover letter:", error);
+      toast({
+        title: "Error",
+        description: "Failed to build cover letter",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsBuildingCoverLetter(false);
+    }
   };
 
   const refreshComparisonData = () => {
@@ -119,6 +163,14 @@ const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
           isClosable: true,
         });
       });
+  };
+
+  const handleWorkExperienceUpdate = async () => {
+    await handleBuildResume();
+  };
+
+  const handleCoverLetterParagraphUpdate = async () => {
+    await handleBuildCoverLetter();
   };
 
   return (
@@ -149,33 +201,20 @@ const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
         <TabPanels>
           <TabPanel>
             <Box mb={4}>
-              {comparison.resume ? (
-                <>
-                  <Button
-                    onClick={handleGenerateResume}
-                    mb={4}
-                    isLoading={isGeneratingResume}
-                    loadingText="Regenerating..."
-                  >
-                    Regenerate Resume
-                  </Button>
-                  <PdfDisplay
-                    base64String={comparison.resume}
-                    fileName={`${comparison.title}_${comparison.company}_Resume.pdf`}
-                  />
-                </>
-              ) : (
-                <>
-                  <Text>No resume available</Text>
-                  <Button
-                    onClick={handleGenerateResume}
-                    mb={4}
-                    isLoading={isGeneratingResume}
-                    loadingText="Generating..."
-                  >
-                    Generate Resume
-                  </Button>
-                </>
+              <Button
+                onClick={handleGenerateWorkExperiences}
+                mb={4}
+                isLoading={isGeneratingWorkExperiences || isBuildingResume}
+                loadingText={isGeneratingWorkExperiences ? "Generating..." : "Building..."}
+                mr={2}
+              >
+                Generate Work Experiences
+              </Button>
+              {comparison.resume && (
+                <PdfDisplay
+                  base64String={comparison.resume}
+                  fileName={`${comparison.title}_${comparison.company}_Resume.pdf`}
+                />
               )}
             </Box>
             <Box>
@@ -184,39 +223,26 @@ const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
               </Heading>
               <WorkExperienceDisplay
                 experiences={comparison.work_experiences}
-                onUpdate={refreshComparisonData}
+                onUpdate={handleWorkExperienceUpdate}
               />
             </Box>
           </TabPanel>
           <TabPanel>
             <Box mb={4}>
-              {comparison.cover_letter ? (
-                <>
-                  <Button
-                    onClick={handleGenerateCoverLetter}
-                    mb={4}
-                    isLoading={isGeneratingCoverLetter}
-                    loadingText="Regenerating..."
-                  >
-                    Regenerate Cover Letter
-                  </Button>
-                  <PdfDisplay
-                    base64String={comparison.cover_letter}
-                    fileName={`${comparison.title.replace(/\s+/g, '')}_${comparison.company.replace(/\s+/g, '')}_cover_letter.pdf`}
-                  />
-                </>
-              ) : (
-                <>
-                  <Text>No cover letter available</Text>
-                  <Button
-                    onClick={handleGenerateCoverLetter}
-                    mb={4}
-                    isLoading={isGeneratingCoverLetter}
-                    loadingText="Generating..."
-                  >
-                    Generate Cover Letter
-                  </Button>
-                </>
+              <Button
+                onClick={handleGenerateCoverLetterParagraphs}
+                mb={4}
+                isLoading={isGeneratingCoverLetterParagraphs || isBuildingCoverLetter}
+                loadingText={isGeneratingCoverLetterParagraphs ? "Generating..." : "Building..."}
+                mr={2}
+              >
+                Generate Cover Letter Paragraphs
+              </Button>
+              {comparison.cover_letter && (
+                <PdfDisplay
+                  base64String={comparison.cover_letter}
+                  fileName={`${comparison.title.replace(/\s+/g, '')}_${comparison.company.replace(/\s+/g, '')}_cover_letter.pdf`}
+                />
               )}
             </Box>
             <Box>
@@ -225,7 +251,7 @@ const ComparisonDetails: React.FC<ComparisonDetailsProps> = ({
               </Heading>
               <CoverLetterParagraphDisplay
                 paragraphs={comparison.cover_letter_paragraphs}
-                onUpdate={refreshComparisonData}
+                onUpdate={handleCoverLetterParagraphUpdate}
               />
             </Box>
           </TabPanel>

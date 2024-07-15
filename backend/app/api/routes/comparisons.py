@@ -18,8 +18,10 @@ from app.models import (
     CoverLetterParagraphs,
     CoverLetterParagraphExamples,
 )
-from app.llm.cv_generator import CVGenerator
+from app.llm.work_experience_generator import WorkExperienceGenerator
 from app.llm.cover_letter_generator import CoverLetterGenerator
+from app.llm.resume_builder import ResumeBuilder
+from app.llm.cover_letter_builder import CoverLetterBuilder
 from app.api.routes.job_postings import extract_job_posting
 from sqlmodel import select
 
@@ -165,19 +167,34 @@ def generate_resume(
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Use your CVBuilder to generate the CV and cover letter
-    cv_generator = CVGenerator(
+    generator = WorkExperienceGenerator(
         model_name=model_in.name,
         user_id=current_user.id,
         temperature=model_in.temperature,
         job_posting_id=comparison.job_posting_id,
         comparison_id=comparison.id,
     )
-    cv_generator.generate_work_experiences()
+    generator.generate_work_experiences()
+
     return Message(message="work experiences generated successfully")
 
 
-@router.post("/generate-cover-letter", response_model=Message)
+@router.patch("/build-resume", response_model=Message)
+def build_resume(session: SessionDep, current_user: CurrentUser, comparison_id: int):
+    """
+    Build the CV Using the current user information and the work experiences
+    """
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
+    builder = ResumeBuilder(
+        user_id=current_user.id,
+        comparison_id=comparison_id,
+    )
+    builder.build_resume()
+    return Message(message="Resume built successfully")
+
+
+@router.post("/generate-cover-letter-paragraphs", response_model=Message)
 def generate_cover_letter(
     session: SessionDep,
     current_user: CurrentUser,
@@ -210,7 +227,25 @@ def generate_cover_letter(
     )
 
     cover_letter_generator.generate_cover_letter_paragraphs()
+
     return Message(message="Cover letter paragraphs generated successfully")
+
+
+@router.patch("/build-cover-letter", response_model=Message)
+def build_cover_letter(
+    session: SessionDep, current_user: CurrentUser, comparison_id: int
+):
+    """
+    Build the Cover Letter Using the current user information and the cover letter paragraphs
+    """
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
+    builder = CoverLetterBuilder(
+        user_id=current_user.id,
+        comparison_id=comparison_id,
+    )
+    builder.build_cover_letter()
+    return Message(message="Cover Letter built successfully")
 
 
 @router.patch("/deactivate", response_model=Message)
