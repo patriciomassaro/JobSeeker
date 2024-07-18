@@ -185,6 +185,14 @@ class LLMInfoEnum(Enum):
         3 / 1000000,
         15 / 1000000,
     )
+    GPT4_O_MINI = (
+        6,
+        "GPT4_O_MINI",
+        "gpt-4o-mini",
+        "OpenAI",
+        0.15 / 1000000,
+        0.6 / 1000000,
+    )
 
 
 class InstitutionSizesEnum(BaseEnum):
