@@ -465,6 +465,7 @@ export class UserComparisonServices {
       errors: {
         404: `User or Work Experience not found`,
         500: `Server Error`,
+        400: `Bad Request`
       },
     });
   }

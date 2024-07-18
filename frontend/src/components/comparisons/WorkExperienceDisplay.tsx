@@ -36,9 +36,30 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
   };
 
   const handleSave = async (index: number) => {
+    const experienceToSave = editedExperiences[index];
+
+    if (!experienceToSave.title || !experienceToSave.company || !experienceToSave.start_year) {
+      toast({
+        title: "Error",
+        description: "Title, company, and start year are required",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    const updatedExperience = {
+      ...experienceToSave,
+      start_year: Number(experienceToSave.start_year),
+      start_month: experienceToSave.start_month ? Number(experienceToSave.start_month) : null,
+      end_year: experienceToSave.end_year ? Number(experienceToSave.end_year) : null,
+      end_month: experienceToSave.end_month ? Number(experienceToSave.end_month) : null,
+    };
+
     try {
       await UserComparisonServices.editWorkExperience({
-        newWorkExperience: editedExperiences[index]
+        newWorkExperience: updatedExperience
       });
       toast({
         title: "Work Experience updated",
@@ -72,10 +93,17 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
     setEditingIndex(null);
   };
 
-  const handleChange = (index: number, field: keyof WorkExperience, value: string) => {
+  const handleChange = (index: number, field: keyof WorkExperience, value: string | number) => {
     setEditedExperiences(prevExperiences => {
       const newExperiences = [...prevExperiences];
-      newExperiences[index] = { ...newExperiences[index], [field]: value };
+      if (field === 'start_year' || field === 'start_month' || field === 'end_year' || field === 'end_month') {
+        newExperiences[index] = {
+          ...newExperiences[index],
+          [field]: value === "" ? null : Number(value)
+        };
+      } else {
+        newExperiences[index] = { ...newExperiences[index], [field]: value };
+      }
       return newExperiences;
     });
   };
@@ -86,7 +114,7 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
         const newExperiences = [...prevExperiences];
         newExperiences[index] = {
           ...newExperiences[index],
-          accomplishments: [...newExperiences[index].accomplishments, newAccomplishment.trim()]
+          accomplishments: [...(newExperiences[index].accomplishments || []), newAccomplishment.trim()]
         };
         return newExperiences;
       });
@@ -97,7 +125,7 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
   const handleEditAccomplishment = (experienceIndex: number, accomplishmentIndex: number, value: string) => {
     setEditedExperiences(prevExperiences => {
       const newExperiences = [...prevExperiences];
-      const newAccomplishments = [...newExperiences[experienceIndex].accomplishments];
+      const newAccomplishments = [...(newExperiences[experienceIndex].accomplishments || [])];
       newAccomplishments[accomplishmentIndex] = value;
       newExperiences[experienceIndex] = { ...newExperiences[experienceIndex], accomplishments: newAccomplishments };
       return newExperiences;
@@ -107,7 +135,7 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
   const handleRemoveAccomplishment = (experienceIndex: number, accomplishmentIndex: number) => {
     setEditedExperiences(prevExperiences => {
       const newExperiences = [...prevExperiences];
-      const newAccomplishments = newExperiences[experienceIndex].accomplishments.filter((_, index) => index !== accomplishmentIndex);
+      const newAccomplishments = (newExperiences[experienceIndex].accomplishments || []).filter((_, index) => index !== accomplishmentIndex);
       newExperiences[experienceIndex] = { ...newExperiences[experienceIndex], accomplishments: newAccomplishments };
       return newExperiences;
     });
@@ -127,24 +155,49 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
                 value={experience.title}
                 onChange={(e) => handleChange(index, 'title', e.target.value)}
                 placeholder="Title"
+                isRequired
               />
               <Input
                 value={experience.company}
                 onChange={(e) => handleChange(index, 'company', e.target.value)}
                 placeholder="Company"
+                isRequired
               />
-              <Input
-                value={experience.start_date}
-                onChange={(e) => handleChange(index, 'start_date', e.target.value)}
-                placeholder="Start Date"
-              />
-              <Input
-                value={experience.end_date}
-                onChange={(e) => handleChange(index, 'end_date', e.target.value)}
-                placeholder="End Date"
-              />
+              <HStack>
+                <Input
+                  type="number"
+                  value={experience.start_year ?? ""}
+                  onChange={(e) => handleChange(index, 'start_year', e.target.value)}
+                  placeholder="Start Year"
+                  isRequired
+                />
+                <Input
+                  type="number"
+                  value={experience.start_month ?? ""}
+                  onChange={(e) => handleChange(index, 'start_month', e.target.value)}
+                  placeholder="Start Month"
+                  min={1}
+                  max={12}
+                />
+              </HStack>
+              <HStack>
+                <Input
+                  type="number"
+                  value={experience.end_year ?? ""}
+                  onChange={(e) => handleChange(index, 'end_year', e.target.value)}
+                  placeholder="End Year"
+                />
+                <Input
+                  type="number"
+                  value={experience.end_month ?? ""}
+                  onChange={(e) => handleChange(index, 'end_month', e.target.value)}
+                  placeholder="End Month"
+                  min={1}
+                  max={12}
+                />
+              </HStack>
               <Text fontWeight="bold">Accomplishments:</Text>
-              {experience.accomplishments.map((accomplishment, accIndex) => (
+              {(experience.accomplishments || []).map((accomplishment, accIndex) => (
                 <HStack key={accIndex}>
                   <Input
                     value={accomplishment}
@@ -190,10 +243,10 @@ const WorkExperienceDisplay: React.FC<WorkExperiencesProps> = ({ experiences, on
               <VStack align="stretch" spacing={2}>
                 <Text fontWeight="bold">{experience.title}</Text>
                 <Text>{experience.company}</Text>
-                <Text>{`${experience.start_date} - ${experience.end_date}`}</Text>
+                <Text>{`${experience.start_year}${experience.start_month ? `-${experience.start_month}` : ''} - ${experience.end_year ? `${experience.end_year}${experience.end_month ? `-${experience.end_month}` : ''}` : 'Present'}`}</Text>
                 <Text fontWeight="bold" mt={2}>Accomplishments:</Text>
                 <VStack align="stretch" pl={4}>
-                  {experience.accomplishments.map((accomplishment, accIndex) => (
+                  {(experience.accomplishments || []).map((accomplishment, accIndex) => (
                     <Text key={accIndex}>• {accomplishment}</Text>
                   ))}
                 </VStack>

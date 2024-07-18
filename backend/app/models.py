@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import constr
 
 from sqlalchemy import String, TEXT
 from sqlalchemy.ext.declarative import declared_attr
@@ -12,7 +11,6 @@ from sqlmodel import (
     Relationship,
     BigInteger,
     UniqueConstraint,
-    CheckConstraint,
 )
 
 from app.core.utils import snake_case
@@ -560,8 +558,10 @@ class CoverLetterParagraphs(CoverLetterParagraphPublic, table=True):
 
 class WorkExperienceBase(SQLModel):
     comparison_id: int | None = Field(foreign_key="comparisons.id")
-    start_date: str
-    end_date: str | None
+    start_year: int
+    start_month: int | None
+    end_year: int | None
+    end_month: int | None
     title: str
     company: str
     accomplishments: list[str] | None = Field(

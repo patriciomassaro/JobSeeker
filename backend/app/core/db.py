@@ -2,11 +2,14 @@ from sqlalchemy.engine import create
 from sqlmodel import create_engine, select, Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
+import os
+import json
 
 from app import crud
 from app.core.config import settings
 from app.models import (
     Users,
+    JobPostings,
     UserCreate,
     InstitutionSizesEnum,
     TimeFiltersEnum,
@@ -26,6 +29,9 @@ from app.models import (
     LLMInfo,
 )
 
+ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
 engine = create_engine(str(settings.SQLALCHEMY_DATABASE_URI))
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -34,6 +40,19 @@ def create_pg_trgm_extension():
     with engine.connect() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
         connection.commit()
+
+
+def load_job_postings_data(session: Session) -> None:
+    with open(os.path.join(ROOT_PATH, "job_posting_initial_data.json")) as file:
+        job_postings = json.load(file)
+
+        for job in job_postings:
+            existing_job = session.exec(
+                select(JobPostings).where(JobPostings.linkedin_id == job["linkedin_id"])
+            ).first()
+            if not existing_job:
+                session.add(JobPostings(**job))
+        session.commit()
 
 
 def init_db(session: Session) -> None:
@@ -94,3 +113,5 @@ def init_db(session: Session) -> None:
             session.add(row)
             session.commit()
             session.refresh(row)
+
+    load_job_postings_data(session)

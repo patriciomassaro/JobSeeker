@@ -1,4 +1,3 @@
-# Create a fast api router to get the institutions, users must be authenticated
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from fastapi import APIRouter, HTTPException
@@ -23,7 +22,7 @@ from app.llm.cover_letter_generator import CoverLetterGenerator
 from app.llm.resume_builder import ResumeBuilder
 from app.llm.cover_letter_builder import CoverLetterBuilder
 from app.api.routes.job_postings import extract_job_posting
-from sqlmodel import select
+from sqlmodel import select, desc, case, asc
 
 router = APIRouter()
 
@@ -66,12 +65,7 @@ def get_comparison_by_id(
 ):
     """Get the comparison by id or by a combination of user_id and job_posting_id"""
 
-    statement = (
-        select(Comparisons)
-        .options(joinedload(Comparisons.job_posting))
-        .options(joinedload(Comparisons.work_experiences))  # type: ignore
-        .options(joinedload(Comparisons.cover_letter_paragraphs))  # type: ignore
-    )
+    statement = select(Comparisons).options(joinedload(Comparisons.job_posting))
 
     if comparison_id is not None:
         statement = statement.where(Comparisons.id == comparison_id)
@@ -81,12 +75,49 @@ def get_comparison_by_id(
             Comparisons.job_posting_id == job_posting_id
             and Comparisons.user_id == current_user.id
         )
+
     comparison = session.scalars(statement).unique().one_or_none()
     if comparison:
+        # Fetch and order work experiences
+        work_experiences_query = (
+            select(WorkExperiences)
+            .where(WorkExperiences.comparison_id == comparison.id)
+            .order_by(
+                desc(
+                    case(
+                        (WorkExperiences.end_year.is_(None), 9999),  # type: ignore
+                        else_=WorkExperiences.end_year,
+                    )
+                ),
+                desc(
+                    case(
+                        (WorkExperiences.end_month.is_(None), 12),  # type: ignore
+                        else_=WorkExperiences.end_month,
+                    )
+                ),
+                desc(WorkExperiences.start_year),
+                desc(WorkExperiences.start_month),
+            )
+        )
+        ordered_work_experiences = session.scalars(work_experiences_query).all()
+        comparison.work_experiences = ordered_work_experiences  # type: ignore
+
+        # Fetch and order cover letter paragraphs
+        cover_letter_paragraphs_query = (
+            select(CoverLetterParagraphs)
+            .where(CoverLetterParagraphs.comparison_id == comparison.id)
+            .order_by(asc(CoverLetterParagraphs.paragraph_number))
+        )
+        ordered_cover_letter_paragraphs = session.scalars(
+            cover_letter_paragraphs_query
+        ).all()
+        comparison.cover_letter_paragraphs = ordered_cover_letter_paragraphs  # type: ignore
+
         if comparison.resume:
             comparison.resume = encode_pdf_to_base64(comparison.resume)  # type: ignore
         if comparison.cover_letter:
             comparison.cover_letter = encode_pdf_to_base64(comparison.cover_letter)  # type: ignore
+
         return ComparisonPublicDetail(
             **comparison.model_dump(),
             title=comparison.job_posting.title,
@@ -156,7 +187,6 @@ def generate_resume(
     if not comparison or not comparison.job_posting_id:
         return Message(message="Comparison does not exist or job posting id is missing")
 
-    # Ensure the job posting summary is extracted
     extract_job_posting(
         session=session,
         current_user=current_user,
@@ -180,7 +210,7 @@ def generate_resume(
 
 
 @router.patch("/build-resume", response_model=Message)
-def build_resume(session: SessionDep, current_user: CurrentUser, comparison_id: int):
+def build_resume(current_user: CurrentUser, comparison_id: int):
     """
     Build the CV Using the current user information and the work experiences
     """
@@ -232,9 +262,7 @@ def generate_cover_letter(
 
 
 @router.patch("/build-cover-letter", response_model=Message)
-def build_cover_letter(
-    session: SessionDep, current_user: CurrentUser, comparison_id: int
-):
+def build_cover_letter(current_user: CurrentUser, comparison_id: int):
     """
     Build the Cover Letter Using the current user information and the cover letter paragraphs
     """
@@ -282,8 +310,14 @@ def edit_work_experience(
     current_user: CurrentUser,
     new_work_experience: WorkExperiencePublic,
 ):
+    print(new_work_experience)
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
+
+    if new_work_experience.start_year is None:
+        raise HTTPException(status_code=400, detail="Start year is required")
+    if new_work_experience.title is None:
+        raise HTTPException(status_code=400, detail="Title is required")
 
     statement = select(WorkExperiences).where(
         WorkExperiences.id == new_work_experience.id,
@@ -302,20 +336,15 @@ def edit_work_experience(
     )
     session.add(example)
     old_work_experience.title = new_work_experience.title
+    old_work_experience.company = new_work_experience.company
+    old_work_experience.start_year = new_work_experience.start_year
+    old_work_experience.start_month = new_work_experience.start_month
+    old_work_experience.end_year = new_work_experience.end_year
+    old_work_experience.end_month = new_work_experience.end_month
     old_work_experience.accomplishments = new_work_experience.accomplishments
     session.add(old_work_experience)
     session.commit()
 
-    # # use your cvbuilder to generate the cv and cover letter
-    # cv_builder = CVBuilder(
-    #     model_name=model_in.get_value(),  # Replace with actual model name
-    #     user_id=current_user.id,
-    #     temperature=model_in.temperature,
-    # )
-    # cv_builder.build(
-    #     job_ids=[old_work_experience.user_job_posting_comparison.job_posting_id],
-    #     use_llm=False,
-    # )
     return Message(message="Work Experience edited successfully")
 
 
@@ -351,14 +380,4 @@ def edit_cover_letter_paragraph(
     session.add(old_cover_letter_paragraph)
     session.commit()
 
-    # cover_letter_builder = CoverLetterBuilder(
-    #     model_name=model_in.get_value(),  # Replace with actual model name
-    #     user_id=current_user.id,
-    #     temperature=model_in.temperature,
-    # )
-    #
-    # cover_letter_builder.build(
-    #     job_ids=[old_cover_letter_paragraph.user_job_posting_comparison.job_posting_id],
-    #     use_llm=False,
-    # )
     return Message(message="Cover Letter edited successfully")

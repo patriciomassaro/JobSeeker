@@ -305,9 +305,12 @@ export const request = <T>(config: OpenAPIConfig, options: ApiRequestOptions, ax
       const url = getUrl(config, options);
       const formData = getFormData(options);
       const body = getRequestBody(options);
+      console.log('request URL')
       console.log(url)
+      console.log('request body')
       console.log(body)
       const headers = await getHeaders(config, options);
+      console.log(headers)
 
       if (!onCancel.isCancelled) {
         let response = await sendRequest<T>(config, options, url, body, formData, headers, onCancel, axiosClient);

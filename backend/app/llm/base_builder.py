@@ -46,9 +46,9 @@ class BasePDFBuilder:
         with open(output_path + ".pdf", "rb") as f:
             pdf_bytes = f.read()
 
-        # # Clean up temporary files
-        # for ext in [".aux", ".log", ".out", ".tex"]:
-        #     if os.path.exists(output_path + ext):
-        #         os.remove(output_path + ext)
+        # Clean up temporary files
+        for ext in [".aux", ".log", ".out", ".tex"]:
+            if os.path.exists(output_path + ext):
+                os.remove(output_path + ext)
 
         return pdf_bytes

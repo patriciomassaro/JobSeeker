@@ -5,7 +5,7 @@ from app.core.db import engine
 from app.llm.base_extractor import BaseLLMExtractor
 from app.logger import Logger
 from app.llm.utils import extract_text_from_pdf_bytes
-from app.models import Users, LLMTransactions, LLMTransactionTypesEnum
+from app.models import Users, LLMTransactionTypesEnum
 from pydantic import BaseModel, Field, validator
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,9 +39,18 @@ class WorkExperience(BaseModel):
     company_name: str = Field(
         description="Name of the company where the position was held."
     )
-    start_date: str = Field(description="Start date of the employment in YYYY format.")
-    end_date: str | None = Field(
-        None, description="End date of the employment in YYYY-MM format, if applicable."
+    start_year: int = Field(
+        description="Year of the start date of the employment in YYYY format."
+    )
+    start_month: int | None = Field(
+        description="Month of the start date of the employment in MM format, if there is one."
+    )
+    end_year: int | None = Field(
+        None,
+        description="year of the end date of the employment in  YYYY format. If there is one",
+    )
+    end_month: int | None = Field(
+        description="Month of the end date of the employment in MM format, if there is one."
     )
     accomplishments: list[str] = Field(
         description="List of achievements or responsibilities in the position"
@@ -51,12 +60,18 @@ class WorkExperience(BaseModel):
 class Education(BaseModel):
     degree: str = Field(description="Name of the degree obtained.")
     institution: str = Field(description="Name of the educational institution.")
-    start_date: str = Field(
-        description="Start date of the degree program in YYYY-MM format."
+    start_year: int = Field(
+        description="Year of the start date of the eduation in YYYY format."
     )
-    end_date: str | None = Field(
+    start_month: int | None = Field(
+        description="Month of the start date of the education in MM format, if there is one."
+    )
+    end_year: int | None = Field(
         None,
-        description="End date of the degree program in YYYY-MM format, if applicable.",
+        description="year of the end date of the education in  YYYY format. If there is one",
+    )
+    end_month: int | None = Field(
+        description="Month of the end date of the education in MM format, if there is one."
     )
     accomplishments: list[str] | None = Field(
         None, description="List of achievements or responsibilities during studies."

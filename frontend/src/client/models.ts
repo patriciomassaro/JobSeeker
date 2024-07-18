@@ -160,7 +160,10 @@ export type JobPostings = {
 export type WorkExperience = {
   id: number;
   comparison_id: number;
-  start_date: string;
+  start_year: number;
+  start_month: number | null;
+  end_year: number | null;
+  end_month: number | null;
   end_date: string;
   title: string;
   company: string;

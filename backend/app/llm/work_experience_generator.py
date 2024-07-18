@@ -22,11 +22,18 @@ class WorkExperienceLLM(BaseModel):
     company_name: str = Field(
         description="Name of the company where the position was held."
     )
-    start_date: str = Field(
-        description="Start date of the employment in YYYY-MM format."
+    start_year: int = Field(
+        description="Year of the start date of the employment in YYYY format."
     )
-    end_date: str | None = Field(
-        None, description="End date of the employment in YYYY-MM format, if applicable."
+    start_month: int | None = Field(
+        description="Month of the start date of the employment in MM format, if there is one."
+    )
+    end_year: int | None = Field(
+        None,
+        description="year of the end date of the employment in  YYYY format. If there is one",
+    )
+    end_month: int | None = Field(
+        description="Month of the end date of the employment in MM format, if there is one."
     )
     accomplishments: list[str] = Field(
         description="List of achievements or responsibilities in the position."
@@ -169,8 +176,10 @@ class WorkExperienceGenerator(BaseGenerator):
                 [
                     WorkExperiences(
                         comparison_id=comparison.id,
-                        start_date=we.start_date,
-                        end_date=we.end_date,
+                        start_year=we.start_year,
+                        start_month=we.start_month,
+                        end_year=we.end_year,
+                        end_month=we.end_month,
                         company=we.company_name,
                         title=we.title,
                         accomplishments=we.accomplishments,

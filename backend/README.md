@@ -13,19 +13,16 @@
 docker compose up -d
 ```
 
-* Now you can open your browser and interact with these URLs:
+Now you can open your browser and interact with these URLs:
 
-Frontend, built with Docker, with routes handled based on the path: http://localhost
+- Frontend, built with Docker, with routes handled based on the path: http://localhost
 
-Backend, JSON based web API based on OpenAPI: http://localhost/api/
+- Backend, JSON based web API based on OpenAPI: http://localhost/api/
 
-Automatic interactive documentation with Swagger UI (from the OpenAPI backend): http://localhost/docs
+- Automatic interactive documentation with Swagger UI (from the OpenAPI backend): http://localhost/docs
 
-Adminer, database web administration: http://localhost:8080
+- Traefik UI, to see how the routes are being handled by the proxy: http://localhost:8090
 
-Traefik UI, to see how the routes are being handled by the proxy: http://localhost:8090
-
-**Note**: The first time you start your stack, it might take a minute for it to be ready. While the backend waits for the database to be ready and configures everything. You can check the logs to monitor it.
 
 To check the logs, run:
 
@@ -61,18 +58,6 @@ $ poetry shell
 
 Make sure your editor is using the correct Python virtual environment.
 
-Modify or add SQLModel models for data and SQL tables in `./backend/app/models.py`, API endpoints in `./backend/app/api/`, CRUD (Create, Read, Update, Delete) utils in `./backend/app/crud.py`.
-
-### Enabling Open User Registration
-
-By default the backend has user registration disabled, but there's already a route to register users. If you want to allow users to register themselves, you can set the environment variable `USERS_OPEN_REGISTRATION` to `True` in the `.env` file.
-
-After modifying the environment variables, restart the Docker containers to apply the changes. You can do this by running:
-
-```console
-$ docker compose up -d
-```
-
 ### VS Code
 
 There are already configurations in place to run the backend through the VS Code debugger, so that you can use breakpoints, pause and explore variables, etc.
@@ -95,13 +80,7 @@ $ docker compose up -d
 
 There is also a commented out `command` override, you can uncomment it and comment the default one. It makes the backend container run a process that does "nothing", but keeps the container alive. That allows you to get inside your running container and execute commands inside, for example a Python interpreter to test installed dependencies, or start the development server that reloads when it detects changes.
 
-To get inside the container with a `bash` session you can start the stack with:
-
-```console
-$ docker compose up -d
-```
-
-and then `exec` inside the running container:
+To get inside the container with a `bash` session you can  `exec` inside the running container:
 
 ```console
 $ docker compose exec backend bash
@@ -193,16 +172,3 @@ $ alembic revision --autogenerate -m "Add column last_name to User model"
 $ alembic upgrade head
 ```
 
-If you don't want to use migrations at all, uncomment the lines in the file at `./backend/app/core/db.py` that end in:
-
-```python
-SQLModel.metadata.create_all(engine)
-```
-
-and comment the line in the file `prestart.sh` that contains:
-
-```console
-$ alembic upgrade head
-```
-
-If you don't want to start with the default models and want to remove them / modify them, from the beginning, without having any previous revision, you can remove the revision files (`.py` Python files) under `./backend/app/alembic/versions/`. And then create a first migration as described above.
