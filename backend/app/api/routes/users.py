@@ -1,6 +1,6 @@
 from typing import Any
 from fastapi import APIRouter, HTTPException, UploadFile, File
-from app import crud
+import app.crud.users as crud
 from app.core.utils import encode_pdf_to_base64
 from app.api.deps import (
     CurrentUser,
@@ -22,7 +22,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=UserPublicMe)
-def create_user(*, session: SessionDep, user_in: UserCreate) -> Any:
+def create_user(session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """

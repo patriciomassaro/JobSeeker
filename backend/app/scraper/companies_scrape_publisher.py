@@ -7,11 +7,11 @@ from app.scraper.rabbit_mq_handler import RabbitMQHandler
 with Session(engine) as session:
     # Building the query
     statement = select(JobPostings.company_url).where(
-        ~exists().where(Institutions.url == JobPostings.company_url)
+        ~exists().where(Institutions.url == JobPostings.company_url)  # type: ignore
     )
     # Executing the query
-    companies_to_scrape = session.execute(statement)
-    not_in_institutions = set(url[0] for url in companies_to_scrape.all())
+    companies_to_scrape = session.exec(statement).all()
+    not_in_institutions = set(companies_to_scrape)
 
 rabbitmq_handler = RabbitMQHandler(log_file_name="consumer.log")
 

@@ -152,9 +152,17 @@ class BaseEnum(Enum):
 
 
 class LLMInfoEnum(Enum):
-    GPT4_O = (1, "GPT4_O", "gpt-4o", "OpenAI", 5 / 1000000, 15 / 1000000)
+    GPT4_O_MINI = (
+        1,
+        "GPT4_O_MINI",
+        "gpt-4o-mini",
+        "OpenAI",
+        0.15 / 1000000,
+        0.6 / 1000000,
+    )
+    GPT4_O = (2, "GPT4_O", "gpt-4o", "OpenAI", 5 / 1000000, 15 / 1000000)
     GPT4_TURBO = (
-        2,
+        3,
         "GPT4",
         "gpt-4-turbo-2024-04-09",
         "OpenAI",
@@ -162,7 +170,7 @@ class LLMInfoEnum(Enum):
         20 / 1000000,
     )
     GPT3_TURBO = (
-        3,
+        4,
         "GPT3",
         "gpt-3.5-turbo-0125",
         "OpenAI",
@@ -170,7 +178,7 @@ class LLMInfoEnum(Enum):
         1.5 / 1000000,
     )
     CLAUDE_OPUS = (
-        4,
+        5,
         "CLAUDE_OPUS",
         "claude-3-opus-20240229",
         "Anthropic",
@@ -178,20 +186,12 @@ class LLMInfoEnum(Enum):
         75 / 1000000,
     )
     CLAUDE_SONNET = (
-        5,
+        6,
         "CLAUDE_SONNET",
         "claude-3-5-sonnet-20240620",
         "Anthropic",
         3 / 1000000,
         15 / 1000000,
-    )
-    GPT4_O_MINI = (
-        6,
-        "GPT4_O_MINI",
-        "gpt-4o-mini",
-        "OpenAI",
-        0.15 / 1000000,
-        0.6 / 1000000,
     )
 
 

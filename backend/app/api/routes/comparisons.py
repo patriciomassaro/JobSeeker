@@ -1,8 +1,18 @@
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import joinedload
 from fastapi import APIRouter, HTTPException
 from app.core.utils import encode_pdf_to_base64
 from app.api.deps import CurrentUser, SessionDep
+from app.crud.comparisons import (
+    get_active_comparisons,
+    get_ordered_work_experiences,
+    get_comparison_by_id_or_job_posting_id,
+    get_ordered_cover_letter_paragraphs,
+    get_work_experience_by_id,
+    edit_work_experience,
+    create_work_experience_example,
+    get_cover_letter_paragraph_by_id,
+    create_cover_letter_paragraph_example,
+    edit_cover_letter_paragraph,
+)
 from app.models import (
     ComparisonPublic,
     ComparisonsPublic,
@@ -11,18 +21,13 @@ from app.models import (
     Message,
     ModelParameters,
     WorkExperiencePublic,
-    WorkExperiences,
-    WorkExperienceExamples,
     CoverLetterParagraphPublic,
-    CoverLetterParagraphs,
-    CoverLetterParagraphExamples,
 )
 from app.llm.work_experience_generator import WorkExperienceGenerator
 from app.llm.cover_letter_generator import CoverLetterGenerator
 from app.llm.resume_builder import ResumeBuilder
 from app.llm.cover_letter_builder import CoverLetterBuilder
 from app.api.routes.job_postings import extract_job_posting
-from sqlmodel import select, desc, case, asc
 
 router = APIRouter()
 
@@ -34,16 +39,9 @@ def get_comparisons(
     """
     Get the comparisons activated by the current user
     """
-    query = (
-        select(Comparisons)
-        .where(Comparisons.user_id == current_user.id and Comparisons.is_active)
-        .offset(skip)
-        .limit(limit)
-        .options(joinedload(Comparisons.job_posting))
-    )
-
-    comparisons = session.exec(query).all()
-
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
+    comparisons = get_active_comparisons(session, current_user.id, skip, limit)
     public_comparisons = [
         ComparisonPublic(
             **comparison.model_dump(),
@@ -64,54 +62,22 @@ def get_comparison_by_id(
     job_posting_id: int | None = None,
 ):
     """Get the comparison by id or by a combination of user_id and job_posting_id"""
-
-    statement = select(Comparisons).options(joinedload(Comparisons.job_posting))
-
-    if comparison_id is not None:
-        statement = statement.where(Comparisons.id == comparison_id)
-
-    if job_posting_id is not None:
-        statement = statement.where(
-            Comparisons.job_posting_id == job_posting_id
-            and Comparisons.user_id == current_user.id
-        )
-
-    comparison = session.scalars(statement).unique().one_or_none()
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
+    comparison = get_comparison_by_id_or_job_posting_id(
+        session,
+        user_id=current_user.id,
+        comparison_id=comparison_id,
+        job_posting_id=job_posting_id,
+    )
     if comparison:
-        # Fetch and order work experiences
-        work_experiences_query = (
-            select(WorkExperiences)
-            .where(WorkExperiences.comparison_id == comparison.id)
-            .order_by(
-                desc(
-                    case(
-                        (WorkExperiences.end_year.is_(None), 9999),  # type: ignore
-                        else_=WorkExperiences.end_year,
-                    )
-                ),
-                desc(
-                    case(
-                        (WorkExperiences.end_month.is_(None), 12),  # type: ignore
-                        else_=WorkExperiences.end_month,
-                    )
-                ),
-                desc(WorkExperiences.start_year),
-                desc(WorkExperiences.start_month),
-            )
+        comparison.work_experiences = get_ordered_work_experiences(
+            session, comparison.id
         )
-        ordered_work_experiences = session.scalars(work_experiences_query).all()
-        comparison.work_experiences = ordered_work_experiences  # type: ignore
 
-        # Fetch and order cover letter paragraphs
-        cover_letter_paragraphs_query = (
-            select(CoverLetterParagraphs)
-            .where(CoverLetterParagraphs.comparison_id == comparison.id)
-            .order_by(asc(CoverLetterParagraphs.paragraph_number))
+        comparison.cover_letter_paragraphs = get_ordered_cover_letter_paragraphs(
+            session, comparison.id
         )
-        ordered_cover_letter_paragraphs = session.scalars(
-            cover_letter_paragraphs_query
-        ).all()
-        comparison.cover_letter_paragraphs = ordered_cover_letter_paragraphs  # type: ignore
 
         if comparison.resume:
             comparison.resume = encode_pdf_to_base64(comparison.resume)  # type: ignore
@@ -139,33 +105,26 @@ def create_or_activate_comparison(
     """
     Create a comparison for the job and user if it does not exists, or activate it if it exists and is not active
     """
-    try:
-        statement = select(Comparisons).where(
-            Comparisons.user_id == current_user.id,
-            Comparisons.job_posting_id == job_posting_id,
-        )
-        existing_comparison = session.exec(statement).one_or_none()
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
+    existing_comparison = get_comparison_by_id_or_job_posting_id(
+        session, user_id=current_user.id, job_posting_id=job_posting_id
+    )
 
-        if existing_comparison:
-            existing_comparison.is_active = True
-            session.add(existing_comparison)
-            session.commit()
-            return Message(message="Comparison Activated back again")
-
-        comparison = Comparisons(
-            user_id=current_user.id,
-            job_posting_id=job_posting_id,
-        )
-        session.add(comparison)
+    if existing_comparison:
+        existing_comparison.is_active = True
+        session.add(existing_comparison)
         session.commit()
-        session.refresh(comparison)
-        return Message(message="Comparison Created")
-    except IntegrityError:
-        session.rollback()
-        return Message(message="Comparison already exists")
-    except Exception as e:
-        session.rollback()
-        return Message(message=str(e))
+        return Message(message="Comparison Activated back again")
+
+    comparison = Comparisons(
+        user_id=current_user.id,
+        job_posting_id=job_posting_id,
+    )
+    session.add(comparison)
+    session.commit()
+    session.refresh(comparison)
+    return Message(message="Comparison Created")
 
 
 @router.post("/generate-work-experiences", response_model=Message)
@@ -180,10 +139,11 @@ def generate_resume(
     """
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
-    statement = select(Comparisons).where(
-        Comparisons.id == comparison_id,
+
+    comparison = get_comparison_by_id_or_job_posting_id(
+        session=session, user_id=current_user.id, comparison_id=comparison_id
     )
-    comparison = session.exec(statement).one_or_none()
+
     if not comparison or not comparison.job_posting_id:
         return Message(message="Comparison does not exist or job posting id is missing")
 
@@ -233,10 +193,11 @@ def generate_cover_letter(
 ):
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
-    statement = select(Comparisons).where(
-        Comparisons.id == comparison_id,
+
+    comparison = get_comparison_by_id_or_job_posting_id(
+        session=session, user_id=current_user.id, comparison_id=comparison_id
     )
-    comparison = session.exec(statement).one_or_none()
+
     if not comparison or not comparison.id or not comparison.job_posting_id:
         return Message(message="Comparison does not exist")
 
@@ -285,12 +246,12 @@ def deactivate_comparison(
     """
     Deactivate the comparison for the job and user if it exists and is active
     """
+    if not current_user.id:
+        raise HTTPException(status_code=404, detail="User not found")
     try:
-        statement = select(Comparisons).where(
-            Comparisons.user_id == current_user.id,
-            Comparisons.job_posting_id == job_posting_id,
+        existing_comparison = get_comparison_by_id_or_job_posting_id(
+            session=session, user_id=current_user.id, job_posting_id=job_posting_id
         )
-        existing_comparison = session.exec(statement).one_or_none()
 
         if existing_comparison:
             existing_comparison.is_active = False
@@ -305,7 +266,7 @@ def deactivate_comparison(
 
 
 @router.post("/edit-work-experience", response_model=Message)
-def edit_work_experience(
+def api_edit_work_experience(
     session: SessionDep,
     current_user: CurrentUser,
     new_work_experience: WorkExperiencePublic,
@@ -319,37 +280,29 @@ def edit_work_experience(
     if new_work_experience.title is None:
         raise HTTPException(status_code=400, detail="Title is required")
 
-    statement = select(WorkExperiences).where(
-        WorkExperiences.id == new_work_experience.id,
+    old_work_experience = get_work_experience_by_id(
+        session=session, work_experience_id=new_work_experience.id
     )
-    old_work_experience = session.exec(statement).one_or_none()
     if not old_work_experience:
         raise HTTPException(status_code=404, detail="Work Experience not found")
 
-    # Create an example
-    example = WorkExperienceExamples(
-        comparison_id=old_work_experience.comparison_id,
-        original_title=old_work_experience.title,
-        original_accomplishments=old_work_experience.accomplishments,
-        edited_title=new_work_experience.title,
-        edited_accomplishments=new_work_experience.accomplishments,
+    _ = create_work_experience_example(
+        session=session,
+        old_work_experience=old_work_experience,
+        new_work_experience=new_work_experience,
     )
-    session.add(example)
-    old_work_experience.title = new_work_experience.title
-    old_work_experience.company = new_work_experience.company
-    old_work_experience.start_year = new_work_experience.start_year
-    old_work_experience.start_month = new_work_experience.start_month
-    old_work_experience.end_year = new_work_experience.end_year
-    old_work_experience.end_month = new_work_experience.end_month
-    old_work_experience.accomplishments = new_work_experience.accomplishments
-    session.add(old_work_experience)
-    session.commit()
+
+    _ = edit_work_experience(
+        session=session,
+        old_work_experience=old_work_experience,
+        new_work_experience=new_work_experience,
+    )
 
     return Message(message="Work Experience edited successfully")
 
 
 @router.post("/edit-cover-letter-paragraph", response_model=Message)
-def edit_cover_letter_paragraph(
+def api_edit_cover_letter_paragraph(
     session: SessionDep,
     current_user: CurrentUser,
     new_cover_letter_paragraph: CoverLetterParagraphPublic,
@@ -357,27 +310,23 @@ def edit_cover_letter_paragraph(
     if not current_user.id:
         raise HTTPException(status_code=404, detail="User not found")
 
-    statement = select(CoverLetterParagraphs).where(
-        CoverLetterParagraphs.id == new_cover_letter_paragraph.id,
+    old_cover_letter_paragraph = get_cover_letter_paragraph_by_id(
+        session=session, paragraph_id=new_cover_letter_paragraph.id
     )
-    old_cover_letter_paragraph = session.exec(statement).one_or_none()
     if not old_cover_letter_paragraph:
         raise HTTPException(
             status_code=404, detail="Cover Letter Paragraph to edit does not exist"
         )
+    _ = create_cover_letter_paragraph_example(
+        session=session,
+        old_cover_letter_paragraph=old_cover_letter_paragraph,
+        new_cover_letter_paragraph=new_cover_letter_paragraph,
+    )
 
-    # Create an example
-    example = CoverLetterParagraphExamples(
-        comparison_id=old_cover_letter_paragraph.comparison_id,
-        paragraph_number=old_cover_letter_paragraph.paragraph_number,
-        original_paragraph_text=old_cover_letter_paragraph.paragraph_text,
-        edited_paragraph_text=new_cover_letter_paragraph.paragraph_text,
+    _ = edit_cover_letter_paragraph(
+        session=session,
+        old_cover_letter_paragraph=old_cover_letter_paragraph,
+        new_cover_letter_paragraph=new_cover_letter_paragraph,
     )
-    session.add(example)
-    old_cover_letter_paragraph.paragraph_text = (
-        new_cover_letter_paragraph.paragraph_text
-    )
-    session.add(old_cover_letter_paragraph)
-    session.commit()
 
     return Message(message="Cover Letter edited successfully")

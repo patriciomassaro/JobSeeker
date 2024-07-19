@@ -2,12 +2,10 @@ import json
 from sqlmodel import Session, select, col
 from app.core.db import engine
 from app.llm.base_extractor import BaseLLMExtractor
+from app.crud.job_postings import get_job_posting_complete_by_id, get_job_posting_by_id
 from app.models import (
     JobPostings,
     Institutions,
-    InstitutionSizes,
-    EmploymentTypes,
-    SeniorityLevels,
     LLMTransactionTypesEnum,
 )
 from app.llm.utils import get_columns
@@ -145,60 +143,30 @@ class JobDescriptionLLMExtractor(BaseLLMExtractor):
                     "tagline",
                 ],
             )
+            job_posting = get_job_posting_complete_by_id(
+                session, job_posting_id, job_posting_columns, institution_columns
+            )
 
-            job_posting = session.exec(
-                select(  # type: ignore
-                    *job_posting_columns,
-                    *institution_columns,
-                    col(InstitutionSizes.description).label("institution_size"),
-                    col(EmploymentTypes.description).label("employment_type"),
-                    col(SeniorityLevels.description).label("seniority_level"),
-                )
-                .outerjoin(
-                    Institutions,
-                    JobPostings.company_url == Institutions.url,  # type: ignore
-                )
-                .outerjoin(
-                    InstitutionSizes,
-                    Institutions.size_id == InstitutionSizes.id,  # type: ignore
-                )
-                .outerjoin(
-                    SeniorityLevels,
-                    JobPostings.seniority_level_id == SeniorityLevels.id,  # type: ignore
-                )
-                .outerjoin(
-                    EmploymentTypes,
-                    JobPostings.employment_type_id == EmploymentTypes.id,  # type: ignore
-                )
-                .where(JobPostings.id == job_posting_id)  # type: ignore
-            ).first()
-            if job_posting:
-                return json.dumps(job_posting._asdict())
-            else:
-                raise ValueError(
-                    f"Job posting {job_posting_id} not found in the database."
-                )
+            return json.dumps(job_posting._asdict())
 
-    def extract_job_posting_and_write_to_db(self, job_id: int):
-        self.logger.info(f"Extracting job posting {job_id}...")
+    def extract_job_posting_and_write_to_db(self, job_posting_id: int):
+        self.logger.info(f"Extracting job posting {job_posting_id}...")
         with Session(engine) as session:
-            job_posting_record = session.exec(
-                select(JobPostings).where(JobPostings.id == job_id)
-            ).first()
-            if job_posting_record and not job_posting_record.summary:
-                job_data = self.get_job_data_from_db(job_id)
+            job_posting = get_job_posting_by_id(session, job_posting_id)
+            if not job_posting.summary:
+                job_data = self.get_job_data_from_db(job_posting_id)
                 job_posting_summary, transaction_summary = self.extract_data_from_text(
                     text=job_data,
                     task_type=LLMTransactionTypesEnum.JOB_POSTING_EXTRACTION,
-                    job_posting_id=job_id,
+                    job_posting_id=job_posting_id,
                 )
-                job_posting_record.summary = job_posting_summary
+                job_posting.summary = job_posting_summary
 
-                session.add(job_posting_record)
+                session.add(job_posting)
                 session.commit()
 
-                self.logger.info(f"Job posting {job_id} updated successfully.")
+                self.logger.info(f"Job posting {job_posting_id} updated successfully.")
             else:
                 self.logger.info(
-                    f"Job posting {job_id} already exists in the database."
+                    f"Job posting {job_posting_id} already exists in the database."
                 )

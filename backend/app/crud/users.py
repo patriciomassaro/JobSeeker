@@ -1,9 +1,13 @@
 from typing import Any
-
 from sqlmodel import Session, select
+
 
 from app.core.security import get_password_hash, verify_password
 from app.models import Users, UserCreate, UserUpdateMe
+from app.logger import Logger
+
+
+logger = Logger(prefix="UsersCRUD", log_file_name="crud.log").get_logger()
 
 
 def create_user(
@@ -19,6 +23,7 @@ def create_user(
     session.add(db_obj)
     session.commit()
     session.refresh(db_obj)
+    logger.info(f"User {db_obj.username} created successfully")
     return db_obj
 
 
@@ -33,6 +38,7 @@ def update_user(*, session: Session, db_user: Users, user_in: UserUpdateMe) -> A
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
+    logger.info(f"User {db_user.username} updated successfully")
     return db_user
 
 
