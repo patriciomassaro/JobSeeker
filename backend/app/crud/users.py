@@ -3,7 +3,13 @@ from sqlmodel import Session, select
 
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Users, UserCreate, UserUpdateMe
+from app.models import (
+    Users,
+    UserCreate,
+    UserUpdateMe,
+    BalanceTransactions,
+    BalanceTransactionsTypeEnum,
+)
 from app.logger import Logger
 
 
@@ -25,6 +31,18 @@ def create_user(
     session.refresh(db_obj)
     logger.info(f"User {db_obj.username} created successfully")
     return db_obj
+
+
+def add_balance_to_user(session: Session, user: Users, amount: float):
+    transaction = BalanceTransactions(
+        user_id=user.id,  # type: ignore
+        amount=amount,
+        transaction_type_id=BalanceTransactionsTypeEnum.DEPOSIT.value[0],
+    )
+    user.balance += amount
+    session.add(transaction)
+    session.commit()
+    logger.info(f"User {user.id} added {amount} to balance successfully")
 
 
 def update_user(*, session: Session, db_user: Users, user_in: UserUpdateMe) -> Any:

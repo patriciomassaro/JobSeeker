@@ -1,5 +1,6 @@
 from typing import Any
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from app.api.decorators import require_positive_balance
 import app.crud.users as crud
 from app.core.utils import encode_pdf_to_base64
 from app.api.deps import (
@@ -22,7 +23,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=UserPublicMe)
-def create_user(session: SessionDep, user_in: UserCreate) -> Any:
+async def create_user(session: SessionDep, user_in: UserCreate) -> Any:
     """
     Create new user.
     """
@@ -60,8 +61,15 @@ async def upload_resume(
     return Message(message="Resume uploaded successfully")
 
 
+@router.post("/me/add_balance", response_model=Message)
+async def add_balance(*, session: SessionDep, current_user: CurrentUser, amount: float):
+    ##TODO stripe?
+    crud.add_balance_to_user(session=session, user=current_user, amount=amount)
+    return Message(message="Balance added successfully")
+
+
 @router.patch("/me", response_model=UserPublicMe)
-def update_user_me(
+async def update_user_me(
     *, session: SessionDep, user_in: UserUpdateMe, current_user: CurrentUser
 ) -> Any:
     """
@@ -85,7 +93,7 @@ def update_user_me(
 
 
 @router.patch("/me/password", response_model=Message)
-def update_password_me(
+async def update_password_me(
     *, session: SessionDep, body: UserPassword, current_user: CurrentUser
 ) -> Any:
     """
@@ -105,7 +113,8 @@ def update_password_me(
 
 
 @router.patch("/me/parse-resume", response_model=Message)
-def parse_resume(
+@require_positive_balance()
+async def parse_resume(
     *, session: SessionDep, current_user: CurrentUser, model_in: ModelParameters
 ) -> Any:
     """
@@ -126,7 +135,7 @@ def parse_resume(
 
 
 @router.get("/me", response_model=UserPublicMe)
-def read_user_me(current_user: CurrentUser) -> Any:
+async def read_user_me(current_user: CurrentUser) -> Any:
     """
     Get current user.
     """
@@ -136,7 +145,7 @@ def read_user_me(current_user: CurrentUser) -> Any:
 
 
 @router.delete("/me", response_model=Message)
-def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
+async def delete_user_me(session: SessionDep, current_user: CurrentUser) -> Any:
     """
     Delete own user.
     """

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from app.api.decorators import require_positive_balance
 from app.core.utils import encode_pdf_to_base64
 from app.api.deps import CurrentUser, SessionDep
 from app.crud.comparisons import (
@@ -33,7 +34,7 @@ router = APIRouter()
 
 
 @router.get("/current_user", response_model=ComparisonsPublic)
-def get_comparisons(
+async def get_comparisons(
     session: SessionDep, current_user: CurrentUser, skip: int = 0, limit: int = 30
 ):
     """
@@ -55,7 +56,7 @@ def get_comparisons(
 
 
 @router.get("/", response_model=ComparisonPublicDetail)
-def get_comparison_by_id(
+async def get_comparison_by_id(
     session: SessionDep,
     current_user: CurrentUser,
     comparison_id: int | None = None,
@@ -97,7 +98,7 @@ def get_comparison_by_id(
 
 
 @router.patch("/create-activate", response_model=Message)
-def create_or_activate_comparison(
+async def create_or_activate_comparison(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
@@ -128,7 +129,8 @@ def create_or_activate_comparison(
 
 
 @router.post("/generate-work-experiences", response_model=Message)
-def generate_resume(
+@require_positive_balance()
+async def generate_resume(
     session: SessionDep,
     current_user: CurrentUser,
     comparison_id: int,
@@ -170,7 +172,7 @@ def generate_resume(
 
 
 @router.patch("/build-resume", response_model=Message)
-def build_resume(current_user: CurrentUser, comparison_id: int):
+async def build_resume(current_user: CurrentUser, comparison_id: int):
     """
     Build the CV Using the current user information and the work experiences
     """
@@ -184,8 +186,10 @@ def build_resume(current_user: CurrentUser, comparison_id: int):
     return Message(message="Resume built successfully")
 
 
+@require_positive_balance()
 @router.post("/generate-cover-letter-paragraphs", response_model=Message)
-def generate_cover_letter(
+@require_positive_balance()
+async def generate_cover_letter(
     session: SessionDep,
     current_user: CurrentUser,
     comparison_id: int,
@@ -223,7 +227,7 @@ def generate_cover_letter(
 
 
 @router.patch("/build-cover-letter", response_model=Message)
-def build_cover_letter(current_user: CurrentUser, comparison_id: int):
+async def build_cover_letter(current_user: CurrentUser, comparison_id: int):
     """
     Build the Cover Letter Using the current user information and the cover letter paragraphs
     """
@@ -238,7 +242,7 @@ def build_cover_letter(current_user: CurrentUser, comparison_id: int):
 
 
 @router.patch("/deactivate", response_model=Message)
-def deactivate_comparison(
+async def deactivate_comparison(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
@@ -266,7 +270,7 @@ def deactivate_comparison(
 
 
 @router.post("/edit-work-experience", response_model=Message)
-def api_edit_work_experience(
+async def api_edit_work_experience(
     session: SessionDep,
     current_user: CurrentUser,
     new_work_experience: WorkExperiencePublic,
@@ -302,7 +306,7 @@ def api_edit_work_experience(
 
 
 @router.post("/edit-cover-letter-paragraph", response_model=Message)
-def api_edit_cover_letter_paragraph(
+async def api_edit_cover_letter_paragraph(
     session: SessionDep,
     current_user: CurrentUser,
     new_cover_letter_paragraph: CoverLetterParagraphPublic,

@@ -5,7 +5,7 @@ from sqlalchemy import text
 import os
 import json
 
-from app import crud
+from app.crud.users import create_user
 from app.core.config import settings
 from app.models import (
     Users,
@@ -18,6 +18,7 @@ from app.models import (
     RemoteModalitiesEnum,
     EmploymentTypesEnum,
     ExperienceLevelsEnum,
+    BalanceTransactionsTypeEnum,
     LLMInfoEnum,
     InstitutionSizes,
     TimeFilters,
@@ -27,6 +28,7 @@ from app.models import (
     EmploymentTypes,
     ExperienceLevels,
     LLMInfo,
+    BalanceTransactionsType,
 )
 
 ROOT_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,7 +68,7 @@ def init_db(session: Session) -> None:
             password=settings.FIRST_SUPERUSER_PASSWORD,
             name=settings.FIRST_SUPERUSER_NAME,
         )
-        user = crud.create_user(session=session, user_create=user_in, is_superuser=True)
+        user = create_user(session=session, user_create=user_in, is_superuser=True)
 
     enums = [
         InstitutionSizesEnum,
@@ -76,6 +78,7 @@ def init_db(session: Session) -> None:
         RemoteModalitiesEnum,
         EmploymentTypesEnum,
         ExperienceLevelsEnum,
+        BalanceTransactionsTypeEnum,
     ]
     tables = [
         InstitutionSizes,
@@ -85,6 +88,7 @@ def init_db(session: Session) -> None:
         RemoteModalities,
         EmploymentTypes,
         ExperienceLevels,
+        BalanceTransactionsType,
     ]
     for enum, table in zip(enums, tables, strict=True):
         for enum_value in enum:

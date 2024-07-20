@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[LLMInfoBase], operation_id="get_all_model_names")
-async def get_all_model_names(*, session: SessionDep) -> Any:
+async def get_all_model_names(session: SessionDep) -> Any:
     """
     Get available model names in the platform.
     """

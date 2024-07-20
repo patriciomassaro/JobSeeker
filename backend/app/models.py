@@ -89,6 +89,9 @@ class Users(UserPublicMe, table=True):
 
     comparisons: list["Comparisons"] = Relationship(back_populates="user")
     llm_transactions: list["LLMTransactions"] = Relationship(back_populates="user")
+    balance_transactions: list["BalanceTransactions"] = Relationship(
+        back_populates="user"
+    )
 
 
 class UserPassword(SQLModel):
@@ -707,3 +710,37 @@ class LLMTransactionTypesEnum(Enum):
     JOB_POSTING_EXTRACTION = (2, "job_posting_extraction")
     CV_GENERATION = (3, "user_cv_generation")
     COVER_LETTER_GENERATION = (4, "cover_letter_generation")
+
+
+###### BALANCE TRANSACTIONS ######
+
+
+class BalanceTransactionsTypeEnum(BaseEnum):
+    DEPOSIT = (1, "purchase")
+    WITHDRAWAL = (2, "withdrawal")
+    REFUND = (3, "refund")
+
+
+class BalanceTransactionsType(SQLModel, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    id: int = Field(default=None, primary_key=True)
+    description: str
+
+
+class BalanceTransactions(SQLModel, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    id: int = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    amount: float
+    transaction_type_id: int = Field(foreign_key="balance_transactions_type.id")
+    description: str | None = None
+    transaction_date: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationship
+    user: "Users" = Relationship(back_populates="balance_transactions")

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import CurrentUser, SessionDep
+from app.api.decorators import require_positive_balance
 from app.models import (
     JobPostingsPublic,
     JobPostingPublic,
@@ -14,7 +15,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=JobPostingsPublic)
-def get_job_postings(
+async def get_job_postings(
     session: SessionDep, current_user: CurrentUser, params: JobQueryParams = Depends()
 ):
     """
@@ -26,7 +27,8 @@ def get_job_postings(
 
 
 @router.post("/extract", response_model=Message)
-def extract_job_posting(
+@require_positive_balance()
+async def extract_job_posting(
     session: SessionDep,
     current_user: CurrentUser,
     job_posting_id: int,
