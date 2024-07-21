@@ -74,6 +74,7 @@ class ResumeBuilder(BasePDFBuilder):
                 if exp.end_year
                 else "Present"
             )
+            print(exp)
 
             exp_str = (
                 r"\begin{twocolentry}"
@@ -81,6 +82,7 @@ class ResumeBuilder(BasePDFBuilder):
                 rf"\textbf{{{exp.title}}}, {exp.company}"
                 r"\end{twocolentry}"
             )
+            print(exp_str)
             if exp.accomplishments:
                 exp_str += "\\vspace{0.10cm}\n"
                 exp_str += "\\begin{onecolentry}\n"
@@ -100,7 +102,6 @@ class ResumeBuilder(BasePDFBuilder):
             key=lambda x: self._date_key(x.get("end_year"), x.get("end_month")),
             reverse=True,
         ):
-            print(edu)
             start_date = self._format_date(edu["start_year"], edu.get("start_month"))
             end_date = (
                 self._format_date(edu["end_year"], edu.get("end_month"))

@@ -24,7 +24,8 @@
 
 ### Configure env variables
 
-You can then update configs in the `.env` files to customize your configurations.
+You can update the configs in the `.env` files to customize your configurations.
+
 
 Before deploying it, make sure you change at least the values for:
 
@@ -42,22 +43,44 @@ Before deploying it, make sure you change at least the values for:
 - SECRET_KEY
 - FIRST_SUPERUSER_PASSWORD
 
+>**Note** For local development, add these variables to your workstation environment variables.
 
-You can (and should) pass these as environment variables from secrets.
+> **In deployment**: You can (and should) pass these as environment variables from secrets. Read the [deployment.md](./deployment.md) docs for more details.
 
-Read the [deployment.md](./deployment.md) docs for more details.
+### Building and running the docker images
 
-### Generate Secret Keys
-
-Some environment variables in the `.env` file have a default value of `changethis`.
-
-You have to change them with a secret key, to generate secret keys you can run the following command:
+To build the docker images , move to the repo folder and run
 
 ```bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
+docker-compose build
 ```
 
-Copy the content and use that as password / secret key. And run that again to generate another secure key.
+then run:
+
+```bash
+docker-compose up -d
+```
+
+### Available services
+
+> - Frontend: http://localhost
+> - Backend: http://localhost/api/
+> - API Documentation: http://localhost/docs
+> - Traefik UI, to see how the routes are being handled by the proxy: http://localhost:8090
+
+
+### Turning off and deleting docker containers
+
+```bash
+docker-compose down
+```
+
+If you want to also delete the local database data
+
+```bash
+docker-compose down -v
+```
+
 
 ## Backend 
 
