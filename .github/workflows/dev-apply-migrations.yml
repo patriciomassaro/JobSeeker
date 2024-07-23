@@ -82,10 +82,9 @@ jobs:
       run: |
         psql -h ${{ env.POSTGRES_SERVER }} -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "SELECT version_num FROM alembic_version;"
 
+        
     - name: Insert initial data
       run: |
         cd backend
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        python -m app/initial_data
-        
-      
+        python -c "from app.initial_data import main; main()"     
