@@ -49,7 +49,7 @@ jobs:
       run: |
         cd backend
         python -c "import sys; print(sys.version)"
-        alembic -v
+        alembic current
 
     - name: Run Alembic migrations
       run: |
