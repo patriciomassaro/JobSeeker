@@ -45,6 +45,12 @@ jobs:
         aws-secret-access-key : ${{ env.AWS_SECRET_ACCESS_KEY}}
         aws-region: ${{env.AWS_REGION}}
 
+    - name: Check Alembic environment Python version
+      run: |
+        cd backend
+        python -c "import sys; print(sys.version)"
+        alembic -v
+
     - name: Run Alembic migrations
       run: |
         cd backend
