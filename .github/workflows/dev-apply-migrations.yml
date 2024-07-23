@@ -22,6 +22,10 @@ jobs:
     environment: DEV
 
     steps:
+    - name: Install system dependencies
+      run: |
+        sudo yum update -y
+        sudo yum install -y postgresql-devel
     - uses: actions/checkout@v2
     - name: Find python3.10 path
       run: |
