@@ -21,6 +21,10 @@ env:
   ECR_REPOSITORY_MQ: ${{secrets.ECR_REPOSITORY_MQ}}
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
   ECR_REPOSITORY_FRONTEND: ${{secrets.ECR_REPOSITORY_FRONTEND}}
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: 5672
+
+  
 
 jobs:
   build-and-push:
@@ -42,28 +46,35 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build, tag, and push MQ image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_MQ:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_MQ:$IMAGE_TAG
+    - name: Get ECR registry URL
+      id: get-ecr-registry
+      run: echo "::set-output name=registry::${{ steps.login-ecr.outputs.registry }}"
 
-    - name: Build, tag, and push Backend image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
+    - name: Create ECR repositories if they don't exist
       run: |
-        cd backend
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG ./backend
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:$IMAGE_TAG
+        docker-compose config --services | while read -r service; do
+          aws ecr describe-repositories --repository-names "${service}" || aws ecr create-repository --repository-name "${service}"
+        done
 
-    - name: Build, tag, and push Frontend image to Amazon ECR
+    - name: Build, tag, and push images to Amazon ECR
       env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REGISTRY: ${{ steps.get-ecr-registry.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd frontend
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG ./frontend
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:$IMAGE_TAG
+        # Update docker-compose file to use ECR
+        sed -i 's|image: |image: '"$ECR_REGISTRY"'/|g' docker-compose.yml
+        
+        # Build images
+        docker-compose build
+
+        # Tag and push each service
+        docker-compose config --services | while read -r service; do
+          docker tag "${service}:latest" "$ECR_REGISTRY/${service}:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/${service}:$IMAGE_TAG"
+        done
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down
+        docker system prune -af
