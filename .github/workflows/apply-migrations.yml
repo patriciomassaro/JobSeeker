@@ -3,7 +3,7 @@ name: Apply DB Migrations
 on:
   push:
     branches:
-      - dev  # or your production branch name
+      - dev  
 
 jobs:
   apply-migrations:
@@ -15,7 +15,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.9'  # or your project's Python version
+        python-version: '3.9.19'
 
     - name: Install dependencies
       run: |
