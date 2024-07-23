@@ -50,8 +50,7 @@ jobs:
         cd backend
         python -c "import sys; print(sys.version)"
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-
-        alembic current
+        python -m alembic current
 
     - name: Run Alembic migrations
       run: |
@@ -63,7 +62,7 @@ jobs:
         echo "PYTHONPATH:"
         echo $PYTHONPATH
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        alembic upgrade head
+        python -m alembic upgrade head
     - name: Verify migration
       env:
         PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
