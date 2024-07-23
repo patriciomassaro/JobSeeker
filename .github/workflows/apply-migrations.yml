@@ -3,9 +3,7 @@ name: Apply DB Migrations
 on:
   push:
     branches:
-      - dev  
-    paths:
-      - 'backend/app/alembic/**' 
+      - dev
 
 
 env:
