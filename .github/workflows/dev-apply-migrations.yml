@@ -85,6 +85,7 @@ jobs:
     - name: Insert initial data
       run: |
         cd backend/app
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
         python -m initial_data
         
       
