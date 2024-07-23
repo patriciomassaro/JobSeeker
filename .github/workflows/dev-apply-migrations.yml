@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - dev
-
-
+    paths:
+      - 'backend/app/alembic/**'
 env:
   POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -39,9 +39,15 @@ jobs:
         aws-region: ${{env.AWS_REGION}}
 
     - name: Run Alembic migrations
-        # Add other environment variables from your .env file here
       run: |
         cd backend
+        echo "Current directory:"
+        pwd
+        echo "Directory contents:"
+        ls -R
+        echo "PYTHONPATH:"
+        echo $PYTHONPATH
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
         alembic upgrade head
     - name: Verify migration
       env:
