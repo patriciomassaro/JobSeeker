@@ -49,6 +49,13 @@ jobs:
         aws-secret-access-key : ${{ env.AWS_SECRET_ACCESS_KEY}}
         aws-region: ${{env.AWS_REGION}}
 
+
+    - name: Create Database if not exists
+      env:
+        PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      run: |
+        psql -h ${{ secrets.POSTGRES_SERVER }} -U ${{ secrets.POSTGRES_USER }} -p ${{ secrets.POSTGRES_PORT }} -tc "SELECT 1 FROM pg_database WHERE datname = '${{ secrets.POSTGRES_DB }}'" | grep -q 1 || psql -h ${{ secrets.POSTGRES_SERVER }} -U ${{ secrets.POSTGRES_USER }} -p ${{ secrets.POSTGRES_PORT }} -c "CREATE DATABASE ${{ secrets.POSTGRES_DB }}"
+
     - name: Check Alembic environment Python version
       run: |
         cd backend
