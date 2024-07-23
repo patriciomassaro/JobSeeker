@@ -23,14 +23,19 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Find python3.10 path
+      run: |
+        which python3.10
+
     - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10.4'
+      run: |
+        PYTHON_PATH=$(which python3.10)
+        sudo ln -sf $PYTHON_PATH /usr/bin/python
+        python --version
 
     - name: Install dependencies
       run: |
-        python3 -m pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install alembic sqlalchemy psycopg2-binary sqlmodel
 
     - name: Configure AWS credentials
