@@ -23,6 +23,8 @@ env:
   ECR_REPOSITORY_FRONTEND: ${{secrets.ECR_REPOSITORY_FRONTEND}}
   RABBITMQ_HOST: rabbitmq
   RABBITMQ_PORT: 5672
+  CUSTOM_SERVICES: "backend frontend"  # Space-separated list of services to build and push to ECR
+  EXTERNAL_SERVICES: "rabbitmq"  # Space-separated list of services using external images to push to ECR
 
   
 
@@ -58,7 +60,7 @@ jobs:
 
     - name: Create ECR repositories if they don't exist
       run: |
-        docker-compose config --services | while read -r service; do
+        for service in $CUSTOM_SERVICES $EXTERNAL_SERVICES; do
           aws ecr describe-repositories --repository-names "${service}" || aws ecr create-repository --repository-name "${service}"
         done
 
@@ -67,15 +69,16 @@ jobs:
         ECR_REGISTRY: ${{ steps.get-ecr-registry.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Update docker-compose file to use ECR
-        sed -i 's|image: |image: '"$ECR_REGISTRY"'/|g' docker-compose.yml
-        
-        # Build images
-        docker-compose build
-
-        # Tag and push each service
-        docker-compose config --services | while read -r service; do
+        # Build and push custom services
+        for service in $CUSTOM_SERVICES; do
+          docker-compose build $service
           docker tag "${service}:latest" "$ECR_REGISTRY/${service}:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/${service}:$IMAGE_TAG"
+        done
+        for service in $EXTERNAL_SERVICES; do
+          image=$(docker-compose config | grep "image: " | grep $service | awk '{print $2}')
+          docker pull $image
+          docker tag $image "$ECR_REGISTRY/${service}:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/${service}:$IMAGE_TAG"
         done
 
