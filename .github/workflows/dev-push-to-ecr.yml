@@ -30,9 +30,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted 
-    environment: DEV
-    
+    runs-on: self-hosted  
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -61,7 +59,8 @@ jobs:
     - name: Create ECR repositories if they don't exist
       run: |
         for service in $CUSTOM_SERVICES $EXTERNAL_SERVICES; do
-          aws ecr describe-repositories --repository-names "${service}" || aws ecr create-repository --repository-name "${service}"
+          repo_name="${PROJECT_NAME}-${service}"
+          aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
         done
 
     - name: Build, tag, and push images to Amazon ECR
@@ -69,18 +68,21 @@ jobs:
         ECR_REGISTRY: ${{ steps.get-ecr-registry.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Build and push custom services
-        for service in $CUSTOM_SERVICES; do
-          docker-compose build $service
-          docker tag "${service}:latest" "$ECR_REGISTRY/${service}:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/${service}:$IMAGE_TAG"
-        done
         for service in $EXTERNAL_SERVICES; do
+          repo_name="${PROJECT_NAME}-${service}"
           image=$(docker-compose config | grep "image: " | grep $service | awk '{print $2}')
           docker pull $image
-          docker tag $image "$ECR_REGISTRY/${service}:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/${service}:$IMAGE_TAG"
+          docker tag $image "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
         done
+
+        for service in $CUSTOM_SERVICES; do
+          repo_name="${PROJECT_NAME}-${service}"
+          docker-compose build $service
+          docker tag "${service}:latest" "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
+        done
+
 
     - name: Cleanup
       if: always()
