@@ -49,6 +49,8 @@ jobs:
       run: |
         cd backend
         python -c "import sys; print(sys.version)"
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+
         alembic current
 
     - name: Run Alembic migrations
