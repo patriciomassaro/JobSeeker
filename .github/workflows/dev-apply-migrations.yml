@@ -26,6 +26,8 @@ jobs:
       run: |
         sudo yum update -y
         sudo yum install -y postgresql-devel
+        sudo yum install -y postgresql
+
     - uses: actions/checkout@v2
     - name: Find python3.10 path
       run: |
