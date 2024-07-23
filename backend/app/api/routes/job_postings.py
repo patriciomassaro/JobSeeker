@@ -2,13 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import CurrentUser, SessionDep
 from app.api.decorators import require_positive_balance
 from app.models import (
+    JobPostingCreate,
     JobPostingsPublic,
     JobPostingPublic,
     JobQueryParams,
     Message,
     ModelParameters,
 )
-from app.crud.job_postings import get_job_postings_by_similarity, get_job_posting_by_id
+from app.crud.job_postings import (
+    get_job_postings_by_similarity,
+    get_job_posting_by_id,
+    api_create_job_posting,
+)
 from app.llm.job_posting_extractor import JobDescriptionLLMExtractor
 
 router = APIRouter()
@@ -16,7 +21,9 @@ router = APIRouter()
 
 @router.get("/", response_model=JobPostingsPublic)
 async def get_job_postings(
-    session: SessionDep, current_user: CurrentUser, params: JobQueryParams = Depends()
+    session: SessionDep,
+    current_user: CurrentUser,
+    params: JobQueryParams = Depends(),
 ):
     """
     Get job postings based on query parameters.
@@ -55,3 +62,18 @@ async def extract_job_posting(
         )
         extractor.extract_job_posting_and_write_to_db(job_posting_id=job_posting_id)
     return Message(message="Job posting extracted successfully")
+
+
+@router.post("/create", response_model=Message)
+async def create_job_posting(
+    session: SessionDep,
+    current_user: CurrentUser,
+    job_posting_in: JobPostingCreate,
+):
+    """
+    Create a new job posting given by the user.
+    """
+    if not current_user:
+        return HTTPException(status_code=404, detail="User not found")
+    api_create_job_posting(session=session, job_posting=job_posting_in)
+    return Message(message="Job posting created successfully")

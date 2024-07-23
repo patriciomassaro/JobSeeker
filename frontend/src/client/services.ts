@@ -4,7 +4,7 @@ import { request as __request } from './core/request';
 
 import type {
   Body_login_login_access_token, Message, NewPassword, Token, UserPublicMe, UpdatePassword, UserCreate, UserRegister, UserUpdateMe,
-  ModelParameters, JobPostings, GetJobPostingParameters, UserJobPostingComparison, UserJobPostingComparisons, ModelNames, CoverLetterParagraph,
+  ModelParameters, JobPosting, JobPostings, GetJobPostingParameters, UserJobPostingComparison, UserJobPostingComparisons, ModelNames, CoverLetterParagraph,
   WorkExperience
 } from './models';
 
@@ -361,6 +361,7 @@ export type TDataGetJobPostings = {
   requestBody: GetJobPostingParameters
 }
 
+
 export class JobPostingServices {
 
   /**
@@ -379,8 +380,27 @@ export class JobPostingServices {
       },
     });
   }
-}
 
+  /**
+   * Create a new job posting.
+   * @param jobPosting - The job posting to create.
+   * @returns JobPosting - The created job posting.
+   * @throws ApiError
+   */
+  public static createJobPosting(data: { newJobPosting: JobPosting }): CancelablePromise<Message> {
+    return __request(OpenAPI, {
+      method: 'POST',
+      url: '/api/v1/job-postings/create',
+      body: data.newJobPosting,
+      mediaType: 'application/json',
+      errors: {
+        422: `Validation Error`,
+        500: `Server Error`,
+        400: `Bad Request`
+      },
+    });
+  }
+}
 
 export class UserComparisonServices {
   /**

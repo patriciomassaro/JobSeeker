@@ -53,8 +53,10 @@ def load_job_postings_data(session: Session) -> None:
                 select(JobPostings).where(JobPostings.linkedin_id == job["linkedin_id"])
             ).first()
             if not existing_job:
-                session.add(JobPostings(**job))
-        session.commit()
+                job = JobPostings.model_validate(job)
+                session.add(job)
+                session.commit()
+                session.refresh(job)
 
 
 def init_db(session: Session) -> None:

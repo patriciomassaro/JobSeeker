@@ -5,6 +5,7 @@ from app.models import (
     JobQueryParams,
     Institutions,
     JobPostings,
+    JobPostingCreate,
     SeniorityLevels,
     EmploymentTypes,
     ExperienceLevels,
@@ -113,6 +114,16 @@ def create_job_posting(*, session: Session, job_posting_in: JobPostings) -> JobP
     session.refresh(job_posting_in)
     logger.info(f"Job posting {job_posting_in.id} created")
     return job_posting_in
+
+
+def api_create_job_posting(
+    session: Session, job_posting: JobPostingCreate
+) -> JobPostings:
+    db_job_posting = JobPostings.model_validate(job_posting)
+    session.add(db_job_posting)
+    session.commit()
+    session.refresh(db_job_posting)
+    return db_job_posting
 
 
 def get_job_posting_complete_by_id(

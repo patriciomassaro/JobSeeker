@@ -384,23 +384,32 @@ class JobQueryParams(SQLModel):
 
 
 class JobPostingBase(SQLModel):
-    id: int = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     title: str
     company: str
-    company_url: str | None
-    institution_id: int | None = Field(foreign_key="institutions.id", default=None)
-    location: str | None
+    company_url: str | None = None
+    location: str | None = None
     description: str
     industries: list[str] | None = Field(sa_column=Column(ARRAY(String)), default=None)
     job_functions: list[str] | None = Field(
         sa_column=Column(ARRAY(String)), default=None
     )
     skills: list[str] | None = Field(sa_column=Column(ARRAY(String)), default=None)
-    job_salary_min: int | None
-    job_salary_max: int | None
-    job_poster_name: str | None
-    job_poster_profile: str | None
+    job_salary_min: int | None = None
+    job_salary_max: int | None = None
+    job_poster_name: str | None = None
+    job_poster_profile: str | None = None
     summary: dict | None = Field(sa_column=Column(JSON), default=None)
+
+
+class JobPostingCreate(JobPostingBase):
+    linkedin_id: int | None = None
+    seniority_level_id: int | None = None
+    employment_type_id: int | None = None
+    experience_level_id: int | None = None
+    salary_range_id: int | None = None
+    remote_modality_id: int | None = None
+    html: str | None = None
 
 
 class JobPostingPublic(JobPostingBase):
@@ -431,7 +440,9 @@ class JobPostings(JobPostingBase, table=True):
 
     __table_args__ = (UniqueConstraint("linkedin_id", name="uq_linkedin_id"),)
 
-    linkedin_id: int = Field(sa_column=Column(BigInteger))
+    linkedin_id: int | None = Field(sa_column=Column(BigInteger))
+    institution_id: int | None = Field(foreign_key="institutions.id", default=None)
+
     seniority_level_id: int | None = Field(
         foreign_key="seniority_levels.id", default=None
     )
@@ -448,7 +459,7 @@ class JobPostings(JobPostingBase, table=True):
         foreign_key="remote_modalities.id", default=None
     )
 
-    html: str = Field(sa_column=Column(TEXT))
+    html: str | None = Field(sa_column=Column(TEXT))
     date_created: datetime = Field(default_factory=datetime.utcnow)
     date_updated: datetime = Field(
         default_factory=datetime.utcnow,
