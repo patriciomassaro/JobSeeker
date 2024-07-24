@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FormControl, FormLabel, Select, Slider, SliderTrack, SliderFilledTrack, SliderThumb, Box, Text, useToast } from '@chakra-ui/react';
-import { ModelNamesService } from '../../client';
+import { DimensionsService } from '../../client';
 
 interface ModelTemperatureSelectorProps {
   model: string;
@@ -16,7 +16,7 @@ const ModelTemperatureSelector: React.FC<ModelTemperatureSelectorProps> = ({ mod
   useEffect(() => {
     const fetchModelNames = async () => {
       try {
-        const response = await ModelNamesService.getModelNames();
+        const response = await DimensionsService.getModelNames();
         setModelOptions(response);
         if (response.length > 0) {
           setModel(response[0].public_name); // Set the first option as the default
