@@ -25,7 +25,7 @@ env:
   RABBITMQ_PORT: 5672
   CUSTOM_SERVICES: "backend frontend"
   EXTERNAL_SERVICES: "rabbitmq"
-  ENVIRONMENT: dev
+  ENVIRONMENT: "dev"
 
 jobs:
   build-and-push:
@@ -60,6 +60,7 @@ jobs:
       run: |
         for service in $CUSTOM_SERVICES $EXTERNAL_SERVICES; do
           repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
+          echo $repo_name
           aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
         done
 
@@ -70,6 +71,7 @@ jobs:
       run: |
         for service in $EXTERNAL_SERVICES; do
           repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
+          echo $repo_name
           image=$(docker-compose config | grep "image: " | grep $service | awk '{print $2}')
           docker pull $image
           docker tag $image "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
@@ -78,6 +80,7 @@ jobs:
         
         for service in $CUSTOM_SERVICES; do
           repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
+          echo $repo_name
           docker-compose build $service
           docker tag "${service}:latest" "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
