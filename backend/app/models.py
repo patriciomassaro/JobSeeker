@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import String, TEXT
+from sqlalchemy import String, TEXT, table
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.dialects.postgresql import JSON, ARRAY
 from sqlmodel import (
@@ -475,6 +475,20 @@ class JobPostings(JobPostingBase, table=True):
     llm_transactions: list["LLMTransactions"] = Relationship(
         back_populates="job_posting"
     )
+
+
+class JobPostingsToScrape(SQLModel, table=True):
+    @declared_attr  # type: ignore
+    def __tablename__(cls) -> str:  # type: ignore
+        return snake_case(cls.__name__)
+
+    __table_args__ = (UniqueConstraint("linkedin_job_id", name="uq_linkedin_job_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    linkedin_job_id: int | None = Field(sa_column=Column(BigInteger))
+    processed: bool = False
+    date_created: datetime = Field(default_factory=datetime.utcnow)
+    date_scraped: datetime | None = None
 
 
 ############# COMPARISONS #############

@@ -14,15 +14,6 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
 
-  rabbitmq:
-    image: "rabbitmq:3-management"
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment: 
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER?Variable not set}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS?Variable not set}
 
   backend:
     image: '${DOCKER_IMAGE_BACKEND?Variable not set}:${TAG-latest}'
@@ -32,7 +23,6 @@ services:
       - default
     depends_on:
       - db
-      - rabbitmq
     env_file:
       - .env
     environment:
@@ -47,10 +37,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER?Variable not set}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER?Variable not set}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS?Variable not set}
       - OPENAI_API_KEY=${OPENAI_API_KEY?Variable not set}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY?Variable not set}
 

@@ -50,7 +50,6 @@ RUN apt-get update && \
 # Verify TeX Live installation
 RUN pdflatex --version || echo "pdflatex installation failed"
 
-
 ENV PYTHONPATH=/app
 
 COPY ./scripts/ /app/

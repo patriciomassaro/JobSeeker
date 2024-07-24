@@ -1,54 +1,39 @@
 from app.scraper.extractors.company_extractor import CompanyExtractor
 from app.logger import Logger
-from app.scraper.rabbit_mq_handler import RabbitMQHandler
+from sqlmodel import Session, select, exists
+from app.models import JobPostings, Institutions
+from app.core.db import engine
+import random
 
-WAIT_TIME_BETWEEN_REQUESTS = 300
+logger = Logger(
+    prefix="CompaniesScraper", log_file_name="companies_scraper.log"
+).get_logger()
 
 
-class CompanyQueueConsumer:
-    def __init__(
-        self,
-        rabbitmq_queue_name="companies_to_scrape",
-        error_queue_name="companies_to_scrape_errors",
-        log_file_name="companies_consumer.log",
-        batch_size=10,
-        max_workers=3,
-        check_interval=30,
-        max_retries=5,
-    ):
-        self.rabbitmq_handler = RabbitMQHandler(
-            log_file_name=log_file_name, max_retries=max_retries
+def get_companies_to_scrape():
+    with Session(engine) as session:
+        # Building the query
+        statement = select(JobPostings.company_url).where(
+            ~exists().where(Institutions.url == JobPostings.company_url)  # type: ignore
         )
-        self.rabbitmq_queue_name = rabbitmq_queue_name
-        self.error_queue_name = error_queue_name
-        self.batch_size = batch_size
-        self.max_workers = max_workers
-        self.check_interval = check_interval
-        self.logger = Logger(
-            prefix="CompaniesQueueConsumer", log_file_name=log_file_name
-        ).get_logger()
-        self.extractor = CompanyExtractor(
-            log_file_name=log_file_name, wait_time=WAIT_TIME_BETWEEN_REQUESTS
-        )
+        # Executing the query
+        companies_to_scrape = session.exec(statement).all()
+        not_in_institutions = set(companies_to_scrape)
+        return list(not_in_institutions)
 
-    def process_companies(self, companies):
-        self.extractor.process_companies_parallel(
-            companies, max_workers=self.max_workers
-        )
 
-    def start_consuming(self):
-        self.rabbitmq_handler.start_consuming(
-            queue_name=self.rabbitmq_queue_name,
-            process_func=self.process_companies,
-            error_queue_name=self.error_queue_name,
-            batch_size=self.batch_size,
-            wait_time=WAIT_TIME_BETWEEN_REQUESTS,
-            check_interval=self.check_interval,
-        )
+def scrape_companies(companies: list[str | None], max_workers: int, batch_size: int):
+    companies_to_scrape = random.sample(companies, batch_size)
+    print(companies_to_scrape)
+    extractor = CompanyExtractor(log_file_name="companies_scraper.log", wait_time=300)
+    extractor.process_companies_parallel(
+        company_urls=companies_to_scrape,  # type: ignore
+        max_workers=max_workers,
+    )
 
 
 if __name__ == "__main__":
-    consumer = CompanyQueueConsumer(
-        batch_size=10, max_workers=1, check_interval=30, max_retries=5
-    )
-    consumer.start_consuming()
+    companies = get_companies_to_scrape()
+    print(companies)
+    if companies:
+        scrape_companies(companies, max_workers=10, batch_size=10)

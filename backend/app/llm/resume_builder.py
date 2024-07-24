@@ -74,7 +74,6 @@ class ResumeBuilder(BasePDFBuilder):
                 if exp.end_year
                 else "Present"
             )
-            print(exp)
 
             exp_str = (
                 r"\begin{twocolentry}"
@@ -82,7 +81,6 @@ class ResumeBuilder(BasePDFBuilder):
                 rf"\textbf{{{exp.title}}}, {exp.company}"
                 r"\end{twocolentry}"
             )
-            print(exp_str)
             if exp.accomplishments:
                 exp_str += "\\vspace{0.10cm}\n"
                 exp_str += "\\begin{onecolentry}\n"

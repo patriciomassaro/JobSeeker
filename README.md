@@ -28,10 +28,6 @@ Before deploying it, make sure you change at least the values for:
 
 - OPENAI_API_KEY
 - ANTHROPIC_API_KEY
-- RABBITMQ_HOST
-- RABBITMQ_PORT="5672"
-- RABBITMQ_DEFAULT_USER
-- RABBITMQ_DEFAULT_PASS
 - POSTGRES_SERVER=db
 - POSTGRES_DB=app
 - POSTGRES_PORT="5432"
