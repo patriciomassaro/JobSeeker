@@ -5,13 +5,10 @@ from app.api.routes import (
     users,
     job_postings,
     comparisons,
-    model_names,
+    dimensions,
 )
 
 api_router = APIRouter()
-api_router.include_router(
-    model_names.router, prefix="/model_names", tags=["model_names"]
-)
 api_router.include_router(login.router, tags=["login"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(
@@ -22,6 +19,4 @@ api_router.include_router(
     prefix="/comparisons",
     tags=["comparisons"],
 )
-api_router.include_router(
-    model_names.router, prefix="/model-names", tags=["model-names"]
-)
+api_router.include_router(dimensions.router, prefix="/dimensions", tags=["dimensions"])

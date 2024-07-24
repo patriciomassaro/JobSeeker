@@ -154,6 +154,11 @@ class BaseEnum(Enum):
         return ""
 
 
+class Dimension(SQLModel):
+    id: int
+    description: str
+
+
 class LLMInfoEnum(Enum):
     GPT4_O_MINI = (
         1,
