@@ -23,10 +23,9 @@ env:
   ECR_REPOSITORY_FRONTEND: ${{secrets.ECR_REPOSITORY_FRONTEND}}
   RABBITMQ_HOST: rabbitmq
   RABBITMQ_PORT: 5672
-  CUSTOM_SERVICES: "backend frontend"  # Space-separated list of services to build and push to ECR
-  EXTERNAL_SERVICES: "rabbitmq"  # Space-separated list of services using external images to push to ECR
-
-  
+  CUSTOM_SERVICES: "backend frontend"
+  EXTERNAL_SERVICES: "rabbitmq"
+  ENVIRONMENT: dev
 
 jobs:
   build-and-push:
@@ -49,7 +48,7 @@ jobs:
 
     - name: Get ECR registry URL
       id: get-ecr-registry
-      run: echo "::set-output name=registry::${{ steps.login-ecr.outputs.registry }}"
+      run: echo "registry=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_OUTPUT
 
     - name: Install docker-compose
       run: |
@@ -60,7 +59,7 @@ jobs:
     - name: Create ECR repositories if they don't exist
       run: |
         for service in $CUSTOM_SERVICES $EXTERNAL_SERVICES; do
-          repo_name="${environment}-${PROJECT_NAME}-${service}"
+          repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
           aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
         done
 
@@ -70,20 +69,19 @@ jobs:
         IMAGE_TAG: ${{ github.sha }}
       run: |
         for service in $EXTERNAL_SERVICES; do
-          repo_name="${environment}-${PROJECT_NAME}-${service}"
+          repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
           image=$(docker-compose config | grep "image: " | grep $service | awk '{print $2}')
           docker pull $image
           docker tag $image "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
         done
-
+        
         for service in $CUSTOM_SERVICES; do
-          repo_name="${environment}-${PROJECT_NAME}-${service}"
+          repo_name="${ENVIRONMENT}-${PROJECT_NAME}-${service}"
           docker-compose build $service
           docker tag "${service}:latest" "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/${repo_name}:$IMAGE_TAG"
         done
-
 
     - name: Cleanup
       if: always()
