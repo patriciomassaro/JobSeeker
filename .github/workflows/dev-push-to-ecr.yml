@@ -162,35 +162,46 @@ jobs:
         SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
         SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
-        LB_ARN=$(aws elbv2 describe-load-balancers --names ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text)
-        if [ "$LB_ARN" == "None" ]; then
+        LB_NAME="${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-alb"
+        LB_ARN=$(aws elbv2 describe-load-balancers --names $LB_NAME --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
+        if [ -z "$LB_ARN" ] || [ "$LB_ARN" == "None" ]; then
+          echo "Creating new load balancer: $LB_NAME"
           LB_ARN=$(aws elbv2 create-load-balancer \
-            --name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-alb \
+            --name $LB_NAME \
             --subnets $SUBNET_1 $SUBNET_2 \
             --security-groups $SECURITY_GROUP \
             --query 'LoadBalancers[0].LoadBalancerArn' \
             --output text)
+        else
+          echo "Load balancer already exists: $LB_NAME"
         fi
 
-        TG_ARN=$(aws elbv2 describe-target-groups --names ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-tg --query 'TargetGroups[0].TargetGroupArn' --output text)
-        if [ "$TG_ARN" == "None" ]; then
+        TG_NAME="${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-tg"
+        TG_ARN=$(aws elbv2 describe-target-groups --names $TG_NAME --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
+        if [ -z "$TG_ARN" ] || [ "$TG_ARN" == "None" ]; then
+          echo "Creating new target group: $TG_NAME"
           TG_ARN=$(aws elbv2 create-target-group \
-            --name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-tg \
+            --name $TG_NAME \
             --protocol HTTP \
             --port 80 \
             --vpc-id $VPC_ID \
             --target-type ip \
             --query 'TargetGroups[0].TargetGroupArn' \
             --output text)
+        else
+          echo "Target group already exists: $TG_NAME"
         fi
 
-        LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $LB_ARN --query 'Listeners[0].ListenerArn' --output text)
-        if [ "$LISTENER_ARN" == "None" ]; then
+        LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $LB_ARN --query 'Listeners[0].ListenerArn' --output text 2>/dev/null || echo "")
+        if [ -z "$LISTENER_ARN" ] || [ "$LISTENER_ARN" == "None" ]; then
+          echo "Creating new listener for load balancer"
           aws elbv2 create-listener \
             --load-balancer-arn $LB_ARN \
             --protocol HTTP \
             --port 80 \
             --default-actions Type=forward,TargetGroupArn=$TG_ARN
+        else
+          echo "Listener already exists for load balancer"
         fi
 
         echo "LB_ARN=$LB_ARN" >> $GITHUB_ENV
