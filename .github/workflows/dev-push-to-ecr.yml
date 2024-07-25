@@ -1,8 +1,10 @@
 name: Build, Push to ECR, and Deploy Backend to Lambda
+
 on:
   push:
     branches: 
       - dev
+
 env: 
   POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -18,6 +20,7 @@ env:
   PROJECT_NAME: ${{secrets.PROJECT_NAME}}
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
   ENVIRONMENT: "dev"
+
 jobs:
   build-and-deploy-backend:
     runs-on: self-hosted  
@@ -25,29 +28,15 @@ jobs:
     steps:
     - name: Install Docker and Docker Compose
       run: |
-        # Update package list
         sudo dnf update -y
-
-        # Install Docker
         sudo dnf install docker -y
-
-        # Start and enable Docker service
+        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo systemctl start docker
         sudo systemctl enable docker
-
-        # Add current user to docker group
         sudo usermod -aG docker $USER
-        
-        # Apply group changes without logout
-        newgrp docker
-
-        # Install Docker Compose
-        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
-
-        # Verify installations
-        sudo docker --version
-        sudo docker-compose --version
+        docker --version
+        docker-compose --version
 
     - name: Checkout code
       uses: actions/checkout@v2
@@ -61,8 +50,7 @@ jobs:
 
     - name: Login to Amazon ECR
       id: login-ecr
-      run: |
-        aws ecr get-login-password --region ${{ env.AWS_REGION }} | sudo docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+      uses: aws-actions/amazon-ecr-login@v1
 
     - name: Build, tag, and push backend image to Amazon ECR
       env:
@@ -72,11 +60,10 @@ jobs:
         # Create ECR repository if it doesn't exist
         repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
         aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
-        
         # Build and push the backend image
-        sudo -E docker-compose build backend
-        sudo docker tag ${PROJECT_NAME}-backend:latest $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
-        sudo docker push $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
+        docker-compose build backend
+        docker tag ${PROJECT_NAME}-backend:latest $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
+        docker push $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
 
     - name: Deploy backend to AWS Lambda
       run: |
@@ -87,10 +74,5 @@ jobs:
     - name: Cleanup
       if: always()
       run: |
-        sudo docker-compose down
-        sudo docker system prune -af
-
-    - name: Verify Docker and Docker Compose installation
-      run: |
-        sudo docker info
-        sudo docker-compose version
+        docker-compose down
+        docker system prune -af
