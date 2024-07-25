@@ -19,8 +19,16 @@ env:
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
   ENVIRONMENT: "dev"
   TAG: latest
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
+  ECS_CLUSTER: ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-cluster
+  ECS_SERVICE: ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-service
+  ECS_TASK_DEFINITION: ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-task
+  CONTAINER_NAME: ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-container
+
+
+
 jobs:
-  build-and-deploy-backend:
+  build-and-deploy-app:
     runs-on: self-hosted  
     environment: DEV
     steps:
@@ -91,6 +99,133 @@ jobs:
         
         # Push the image to ECR
         docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+   
+
+
+    - name: Deploy Network Stack
+      run: |
+        aws cloudformation deploy \
+          --template-file infrastructure/network-resources.yml \
+          --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network \
+          --capabilities CAPABILITY_IAM
+
+    - name: Create ECS Cluster
+      run: |
+        aws ecs create-cluster \
+          --cluster-name $ECS_CLUSTER \
+          --capacity-providers FARGATE \
+          --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
+
+    - name: Create Task Definition
+      run: |
+        task_def=$(cat <<EOF
+        {
+          "family": "$ECS_TASK_DEFINITION",
+          "networkMode": "awsvpc",
+          "requiresCompatibilities": ["FARGATE"],
+          "cpu": "256",
+          "memory": "512",
+          "containerDefinitions": [
+            {
+              "name": "$CONTAINER_NAME",
+              "image": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
+              "portMappings": [
+                {
+                  "containerPort": 80,
+                  "hostPort": 80,
+                  "protocol": "tcp"
+                }
+              ],
+              "environment": [
+                {"name": "POSTGRES_SERVER", "value": "${{ secrets.POSTGRES_SERVER }}"},
+                {"name": "POSTGRES_USER", "value": "${{ secrets.POSTGRES_USER }}"},
+                {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.POSTGRES_PASSWORD }}"},
+                {"name": "POSTGRES_DB", "value": "${{ secrets.POSTGRES_DB }}"},
+                {"name": "POSTGRES_PORT", "value": "${{ secrets.POSTGRES_PORT }}"},
+                {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
+                {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
+                {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
+                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
+              ]
+            }
+          ]
+        }
+        EOF
+        )
+        echo "$task_def" > task-definition.json
+        aws ecs register-task-definition --cli-input-json file://task-definition.json
+
+    - name: Create or Update Load Balancer
+      run: |
+        VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+
+        LB_ARN=$(aws elbv2 describe-load-balancers --names ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text)
+        if [ "$LB_ARN" == "None" ]; then
+          LB_ARN=$(aws elbv2 create-load-balancer \
+            --name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-alb \
+            --subnets $SUBNET_1 $SUBNET_2 \
+            --security-groups $SECURITY_GROUP \
+            --query 'LoadBalancers[0].LoadBalancerArn' \
+            --output text)
+        fi
+
+        TG_ARN=$(aws elbv2 describe-target-groups --names ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-tg --query 'TargetGroups[0].TargetGroupArn' --output text)
+        if [ "$TG_ARN" == "None" ]; then
+          TG_ARN=$(aws elbv2 create-target-group \
+            --name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-tg \
+            --protocol HTTP \
+            --port 80 \
+            --vpc-id $VPC_ID \
+            --target-type ip \
+            --query 'TargetGroups[0].TargetGroupArn' \
+            --output text)
+        fi
+
+        LISTENER_ARN=$(aws elbv2 describe-listeners --load-balancer-arn $LB_ARN --query 'Listeners[0].ListenerArn' --output text)
+        if [ "$LISTENER_ARN" == "None" ]; then
+          aws elbv2 create-listener \
+            --load-balancer-arn $LB_ARN \
+            --protocol HTTP \
+            --port 80 \
+            --default-actions Type=forward,TargetGroupArn=$TG_ARN
+        fi
+
+        echo "LB_ARN=$LB_ARN" >> $GITHUB_ENV
+        echo "TG_ARN=$TG_ARN" >> $GITHUB_ENV
+
+    - name: Create or Update ECS Service
+      run: |
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+
+        if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query "services[?status=='ACTIVE']" --output text | grep -q .; then
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_SERVICE \
+            --task-definition $ECS_TASK_DEFINITION \
+            --desired-count 1 \
+            --force-new-deployment
+        else
+          aws ecs create-service \
+            --cluster $ECS_CLUSTER \
+            --service-name $ECS_SERVICE \
+            --task-definition $ECS_TASK_DEFINITION \
+            --desired-count 1 \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_1,$SUBNET_2],securityGroups=[$SECURITY_GROUP],assignPublicIp=ENABLED}" \
+            --load-balancers "targetGroupArn=$TG_ARN,containerName=$CONTAINER_NAME,containerPort=80"
+        fi
+
+    - name: Get Load Balancer DNS Name
+      run: |
+        LB_DNS=$(aws elbv2 describe-load-balancers --load-balancer-arns $LB_ARN --query 'LoadBalancers[0].DNSName' --output text)
+        echo "Your API is accessible at: http://$LB_DNS"
+        echo "LB_DNS=$LB_DNS" >> $GITHUB_ENV
+
     - name: Cleanup
       if: always()
       run: |
