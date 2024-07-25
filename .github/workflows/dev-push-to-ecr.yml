@@ -1,10 +1,8 @@
 name: Build, Push to ECR, and Deploy Backend to Lambda
-
 on:
   push:
     branches: 
       - dev
-
 env: 
   POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
@@ -20,9 +18,7 @@ env:
   PROJECT_NAME: ${{secrets.PROJECT_NAME}}
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
   ENVIRONMENT: "dev"
-  DOCKER_IMAGE_BACKEND: ${PROJECT_NAME}-backend
   TAG: latest
-
 jobs:
   build-and-deploy-backend:
     runs-on: self-hosted  
@@ -41,21 +37,17 @@ jobs:
         docker --version
         docker-compose --version
         docker version
-
     - name: Checkout code
       uses: actions/checkout@v2
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{env.AWS_ACCESS_KEY_ID}} 
         aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY}}
         aws-region: ${{ env.AWS_REGION }}
-
-    - name: Login to Amazon EC
+    - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
-
     - name: Build, tag, and push backend image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -64,22 +56,24 @@ jobs:
         # Create ECR repository if it doesn't exist
         repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
         aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
+        
         # Set environment variables for docker-compose
-        export DOCKER_IMAGE_BACKEND=${DOCKER_IMAGE_BACKEND}
-        export TAG=${TAG}
-        # Build and push the backend image
+        export DOCKER_IMAGE_BACKEND="${PROJECT_NAME}-backend"
+        export TAG="${TAG}"
+        
+        # Build the backend image
         docker-compose build backend
+        
         # Tag the image with ECR repository
-        docker tag ${DOCKER_IMAGE_BACKEND}:${TAG} $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
+        docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+        
         # Push the image to ECR
-        docker push $ECR_REGISTRY/${repo_name}:$IMAGE_TAG
-
+        docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
     - name: Deploy backend to AWS Lambda
       run: |
         aws lambda update-function-code \
           --function-name "${ENVIRONMENT}-${PROJECT_NAME}-backend" \
-          --image-uri ${{ steps.login-ecr.outputs.registry }}/${ENVIRONMENT}-${PROJECT_NAME}-backend:${{ github.sha }}
-
+          --image-uri "${ECR_REGISTRY}/${ENVIRONMENT}-${PROJECT_NAME}-backend:${IMAGE_TAG}"
     - name: Cleanup
       if: always()
       run: |
