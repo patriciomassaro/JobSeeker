@@ -26,11 +26,17 @@ jobs:
     runs-on: self-hosted  
     environment: DEV
     steps:
-    - name: Install docker-compose
+    - name: Install Docker and Docker Compose
       run: |
-        sudo yum install docker
+        sudo dnf update -y
+        sudo dnf install docker -y
+        sudo dnf install docker-compose -y
+        
         sudo systemctl start docker
         sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+
+        docker --version
         docker-compose --version
 
     - name: Checkout code
