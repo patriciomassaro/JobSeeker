@@ -65,7 +65,7 @@ services:
       - traefik.http.routers.${STACK_NAME?Variable not set}-backend-https.middlewares=${STACK_NAME?Variable not set}-www-redirect
 
   frontend:
-    image: '${DOCKER_IMAGE_FRONTEND?Variable not set}:${TAG-latest}'
+    image: '${DOCKER_IMAGE_FRONTEND}:${TAG}'
     restart: always
     networks:
       - traefik-public
@@ -106,5 +106,4 @@ volumes:
 
 networks:
   traefik-public:
-    # Allow setting it to false for testing
     external: true
