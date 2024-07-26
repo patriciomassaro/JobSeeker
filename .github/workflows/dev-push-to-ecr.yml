@@ -150,7 +150,8 @@ jobs:
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
-                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
+                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"},
+                {"name": "SECRET_KEY", "value": "${{ secrets.SECRET_KEY }}"},
                 {"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}"},
                 {"name": "ANTHROPIC_API_KEY", "value": "${{ secrets.ANTHROPIC_API_KEY }}"}
               ]
