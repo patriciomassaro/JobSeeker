@@ -57,49 +57,49 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
    
-    # - name: Build, tag, and push frontend image to Amazon ECR
-    #   env:
-    #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #     IMAGE_TAG: ${{ github.sha }}
-    #   run: |
-    #     # Create ECR repository if it doesn't exist
-    #     repo_name="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
-    #     aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
-    #
-    #     # Set environment variables for docker-compose
-    #     export DOCKER_IMAGE_FRONTEND="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
-    #     export TAG="${TAG}"
-    #
-    #     # Build the frontend image
-    #     docker-compose build frontend 
-    #
-    #     # Tag the image with ECR repository
-    #     docker tag "${DOCKER_IMAGE_FRONTEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
-    #
-    #     # Push the image to ECR
-    #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
-    #
-    # - name: Build, tag, and push backend image to Amazon ECR
-    #   env:
-    #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-    #     IMAGE_TAG: ${{ github.sha }}
-    #   run: |
-    #     # Create ECR repository if it doesn't exist
-    #     repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
-    #     aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
-    #
-    #     # Set environment variables for docker-compose
-    #     export DOCKER_IMAGE_BACKEND="${ENVIRONMENT}-${PROJECT_NAME}-backend"
-    #     export TAG="${TAG}"
-    #
-    #     # Build the backend image
-    #     docker-compose build backend
-    #
-    #     # Tag the image with ECR repository
-    #     docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
-    #
-    #     # Push the image to ECR
-    #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"   
+    - name: Build, tag, and push frontend image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Create ECR repository if it doesn't exist
+        repo_name="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
+        aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
+
+        # Set environment variables for docker-compose
+        export DOCKER_IMAGE_FRONTEND="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
+        export TAG="${TAG}"
+
+        # Build the frontend image
+        docker-compose build frontend 
+
+        # Tag the image with ECR repository
+        docker tag "${DOCKER_IMAGE_FRONTEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+
+        # Push the image to ECR
+        docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+
+    - name: Build, tag, and push backend image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Create ECR repository if it doesn't exist
+        repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
+        aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
+
+        # Set environment variables for docker-compose
+        export DOCKER_IMAGE_BACKEND="${ENVIRONMENT}-${PROJECT_NAME}-backend"
+        export TAG="${TAG}"
+
+        # Build the backend image
+        docker-compose build backend
+
+        # Tag the image with ECR repository
+        docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+
+        # Push the image to ECR
+        docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"   
 
     - name: Create or Update ECS Task Execution Role
       run: |
