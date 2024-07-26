@@ -103,6 +103,8 @@ jobs:
 
     - name: Deploy Network Stack
       run: |
+        echo "ENV: ${ENVIRONMENT}"
+        echo "PROJECT: ${PROJECT_NAME}"
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
           --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network \
