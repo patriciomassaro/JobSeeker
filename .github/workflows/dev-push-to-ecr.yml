@@ -1,4 +1,4 @@
-name: Build, Push to ECR, and Deploy front end and backend to Lambda
+name: Build, Push to ECR, and Deploy front end and backend to ECS 
 on:
   push:
     branches: 
@@ -60,7 +60,7 @@ jobs:
     - name: Build, tag, and push frontend image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: latest 
       run: |
         # Create ECR repository if it doesn't exist
         repo_name="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
@@ -82,7 +82,7 @@ jobs:
     - name: Build, tag, and push backend image to Amazon ECR
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: latest 
       run: |
         # Create ECR repository if it doesn't exist
         repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
@@ -186,7 +186,7 @@ jobs:
           "containerDefinitions": [
             {
               "name": "${{ env.CONTAINER_NAME }}",
-              "image": "${{ steps.login-ecr.outputs.registry }}/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-backend:${{ github.sha }}",
+              "image": "${{ steps.login-ecr.outputs.registry }}/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-backend:latest
               "portMappings": [
                 {
                   "containerPort": 80,
@@ -208,6 +208,14 @@ jobs:
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
                 {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
               ]
+              "logConfiguration": {
+              "logDriver": "awslogs",
+              "options": {
+                "awslogs-group": "/ecs/${{ env.ECS_TASK_DEFINITION }}",
+                "awslogs-region": "${{ env.AWS_REGION }}",
+                "awslogs-stream-prefix": "ecs"
+                }
+              }
             }
           ]
         }
@@ -302,4 +310,3 @@ jobs:
       if: always()
       run: |
         docker-compose down
-        docker system prune -af
