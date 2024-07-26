@@ -1,4 +1,4 @@
-name: Build, Push to ECR, and Deploy Backend to Lambda
+name: Build, Push to ECR, and Deploy front end and backend to Lambda
 on:
   push:
     branches: 
@@ -107,6 +107,7 @@ jobs:
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
           --stack-name ${{ secrets.PROJECT_NAME }}-${{ secrets.ENVIRONMENT }}-network \
+          --parameter-overrides EnvironmentName=${{ secrets.ENVIRONMENT }} \
           --capabilities CAPABILITY_IAM
 
     - name: Create ECS Cluster

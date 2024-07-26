@@ -1,6 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Network resources for ECS deployment
 
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Environment name for the stack
+
 Resources:
   VPC:
     Type: AWS::EC2::VPC
@@ -10,14 +20,14 @@ Resources:
       EnableDnsSupport: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-VPC
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-VPC
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
     Properties:
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-IGW
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-IGW
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -34,7 +44,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet1
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-PublicSubnet1
 
   PublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -45,7 +55,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet2
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-PublicSubnet2
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -53,7 +63,7 @@ Resources:
       VpcId: !Ref VPC
       Tags:
         - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicRouteTable
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-PublicRouteTable
 
   DefaultPublicRoute:
     Type: AWS::EC2::Route
@@ -85,28 +95,31 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-${AWS::StackName}-ECSSecurityGroup
 
 Outputs:
   VpcId:
     Description: VPC ID
     Value: !Ref VPC
     Export:
-      Name: !Sub ${AWS::StackName}-VpcId
+      Name: !Sub ${EnvironmentName}-${AWS::StackName}-VpcId
 
   PublicSubnet1:
     Description: Public Subnet 1 ID
     Value: !Ref PublicSubnet1
     Export:
-      Name: !Sub ${AWS::StackName}-PublicSubnet1
+      Name: !Sub ${EnvironmentName}-${AWS::StackName}-PublicSubnet1
 
   PublicSubnet2:
     Description: Public Subnet 2 ID
     Value: !Ref PublicSubnet2
     Export:
-      Name: !Sub ${AWS::StackName}-PublicSubnet2
+      Name: !Sub ${EnvironmentName}-${AWS::StackName}-PublicSubnet2
 
   ECSSecurityGroup:
     Description: ECS Security Group ID
     Value: !Ref ECSSecurityGroup
     Export:
-      Name: !Sub ${AWS::StackName}-ECSSecurityGroup
+      Name: !Sub ${EnvironmentName}-${AWS::StackName}-ECSSecurityGroup
