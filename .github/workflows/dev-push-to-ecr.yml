@@ -5,31 +5,32 @@ on:
     branches: 
       - dev
 
-env: 
-  POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
-  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-  FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
-  ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
-  ECR_REPOSITORY_BACKEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-backend
-  ECR_REPOSITORY_FRONTEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-frontend
-  TAG: ${{ github.sha }}
-  ECS_CLUSTER: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
-  ECS_SERVICE: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-service
-  ECS_TASK_DEFINITION: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-task
-  CONTAINER_NAME: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-container
-
 jobs:
   build-and-deploy-app:
     runs-on: self-hosted  
     environment: ${{ secrets.ENVIRONMENT }}
+
+    env: 
+      POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
+      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
+      PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+      ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
+      ECR_REPOSITORY_BACKEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-backend
+      ECR_REPOSITORY_FRONTEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-frontend
+      TAG: ${{ github.sha }}
+      ECS_CLUSTER: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
+      ECS_SERVICE: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-service
+      ECS_TASK_DEFINITION: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-task
+      CONTAINER_NAME: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-container
+
     steps:
     - name: Install Docker and Docker Compose
       run: |
@@ -51,9 +52,9 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Login to Amazon ECR
       id: login-ecr
