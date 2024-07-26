@@ -106,8 +106,8 @@ jobs:
       run: |
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
-          --stack-name ${{ secrets.PROJECT_NAME }}-${{ ENVIRONMENT }}-network \
-          --parameter-overrides EnvironmentName=${{ ENVIRONMENT }} \
+          --stack-name ${{ secrets.PROJECT_NAME }}-$ENVIRONMENT-network \
+          --parameter-overrides EnvironmentName=$ENVIRONMENT \
           --capabilities CAPABILITY_IAM
 
     - name: Create ECS Cluster
