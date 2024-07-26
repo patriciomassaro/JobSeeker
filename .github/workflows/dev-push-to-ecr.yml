@@ -93,7 +93,7 @@ jobs:
         export TAG="${TAG}"
 
         # Build the backend image
-        docker-compose --no-cache build backend
+        docker-compose  build --no-cache backend
 
         # Tag the image with ECR repository
         docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
