@@ -1,35 +1,36 @@
-name: Build, Push to ECR, and Deploy to ECS
-
+name: Build, Push to ECR, and Deploy front end and backend to Lambda
 on:
   push:
     branches: 
       - dev
+env: 
+  POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
+  POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+  POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+  POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_REGION: ${{secrets.AWS_REGION}}
+  FIRST_SUPERUSER: ${{secrets.FIRST_SUPERUSER}}
+  FIRST_SUPERUSER_NAME: ${{secrets.FIRST_SUPERUSER_NAME}}
+  FIRST_SUPERUSER_PASSWORD: ${{secrets.FIRST_SUPERUSER_PASSWORD}}
+  PROJECT_NAME: ${{secrets.PROJECT_NAME}}
+  ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
+  ENVIRONMENT: "dev"
+  TAG: latest
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
+  ECS_CLUSTER: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
+  ECS_SERVICE: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-service
+  ECS_TASK_DEFINITION: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-task
+  CONTAINER_NAME: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-container
+
+
 
 jobs:
   build-and-deploy-app:
     runs-on: self-hosted  
-    environment: DEV 
-
-    env: 
-      POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-      POSTGRES_PORT: ${{ secrets.POSTGRES_PORT }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-      PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
-      ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
-      ECR_REPOSITORY_BACKEND: dev-${{ secrets.PROJECT_NAME }}-backend
-      ECR_REPOSITORY_FRONTEND: dev-${{ secrets.PROJECT_NAME }}-frontend
-      ECS_CLUSTER: dev-${{ secrets.PROJECT_NAME }}-cluster
-      ECS_SERVICE: dev-${{ secrets.PROJECT_NAME }}-service
-      ECS_TASK_DEFINITION: dev-${{ secrets.PROJECT_NAME }}-task
-      CONTAINER_NAME: dev-${{ secrets.PROJECT_NAME }}-container
-
+    environment: DEV
     steps:
     - name: Install Docker and Docker Compose
       run: |
@@ -44,49 +45,77 @@ jobs:
         docker --version
         docker-compose --version
         docker version
-
     - name: Checkout code
       uses: actions/checkout@v2
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
-
+        aws-access-key-id: ${{env.AWS_ACCESS_KEY_ID}} 
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY}}
+        aws-region: ${{ env.AWS_REGION }}
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
+    # - name: Build, tag, and push frontend image to Amazon ECR
+    #   env:
+    #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+    #     IMAGE_TAG: ${{ github.sha }}
+    #   run: |
+    #     # Create ECR repository if it doesn't exist
+    #     repo_name="${ENVIRONMENT}-${PROJECT_NAME}-frontend"
+    #     aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
+    #
+    #     # Set environment variables for docker-compose
+    #     export DOCKER_IMAGE_FRONTEND="${PROJECT_NAME}-frontend"
+    #     export TAG="${TAG}"
+    #
+    #     # Build the backend image
+    #     docker-compose build frontend 
+    #
+    #     # Tag the image with ECR repository
+    #     docker tag "${DOCKER_IMAGE_FRONTEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+    #
+    #     # Push the image to ECR
+    #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+    #
+    # - name: Build, tag, and push backend image to Amazon ECR
+    #   env:
+    #     ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+    #     IMAGE_TAG: ${{ github.sha }}
+    #   run: |
+    #     # Create ECR repository if it doesn't exist
+    #     repo_name="${ENVIRONMENT}-${PROJECT_NAME}-backend"
+    #     aws ecr describe-repositories --repository-names "${repo_name}" || aws ecr create-repository --repository-name "${repo_name}"
+    #
+    #     # Set environment variables for docker-compose
+    #     export DOCKER_IMAGE_BACKEND="${PROJECT_NAME}-backend"
+    #     export TAG="${TAG}"
+    #
+    #     # Build the backend image
+    #     docker-compose build backend
+    #
+    #     # Tag the image with ECR repository
+    #     docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+    #
+    #     # Push the image to ECR
+    #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
+   
 
-    - name: Build, tag, and push images to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-      run: |
-        # Backend
-        docker-compose build backend
-        docker tag ${PROJECT_NAME}-backend:${TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY_BACKEND}:${TAG}
-        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY_BACKEND}:${TAG}
-
-        # Frontend
-        docker-compose build frontend
-        docker tag ${PROJECT_NAME}-frontend:${TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY_FRONTEND}:${TAG}
-        docker push ${ECR_REGISTRY}/${ECR_REPOSITORY_FRONTEND}:${TAG}
 
     - name: Deploy Network Stack
       run: |
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
-          --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network \
+          --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network \
           --parameter-overrides \
-            EnvironmentName=${ENVIRONMENT} \
-            ProjectName=${PROJECT_NAME} \
+            EnvironmentName=${{ secrets.ENVIRONMENT }} \
+            ProjectName=${{ secrets.PROJECT_NAME }} \
           --capabilities CAPABILITY_IAM
 
     - name: Create ECS Cluster
       run: |
         aws ecs create-cluster \
-          --cluster-name ${ECS_CLUSTER} \
+          --cluster-name $ECS_CLUSTER \
           --capacity-providers FARGATE \
           --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
 
@@ -94,15 +123,15 @@ jobs:
       run: |
         task_def=$(cat <<EOF
         {
-          "family": "${ECS_TASK_DEFINITION}",
+          "family": "$ECS_TASK_DEFINITION",
           "networkMode": "awsvpc",
           "requiresCompatibilities": ["FARGATE"],
           "cpu": "256",
           "memory": "512",
           "containerDefinitions": [
             {
-              "name": "${CONTAINER_NAME}",
-              "image": "${ECR_REGISTRY}/${ECR_REPOSITORY_BACKEND}:${TAG}",
+              "name": "$CONTAINER_NAME",
+              "image": "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}",
               "portMappings": [
                 {
                   "containerPort": 80,
@@ -111,15 +140,15 @@ jobs:
                 }
               ],
               "environment": [
-                {"name": "POSTGRES_SERVER", "value": "${POSTGRES_SERVER}"},
-                {"name": "POSTGRES_USER", "value": "${POSTGRES_USER}"},
-                {"name": "POSTGRES_PASSWORD", "value": "${POSTGRES_PASSWORD}"},
-                {"name": "POSTGRES_DB", "value": "${POSTGRES_DB}"},
-                {"name": "POSTGRES_PORT", "value": "${POSTGRES_PORT}"},
-                {"name": "FIRST_SUPERUSER", "value": "${FIRST_SUPERUSER}"},
-                {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${FIRST_SUPERUSER_PASSWORD}"},
-                {"name": "PROJECT_NAME", "value": "${PROJECT_NAME}"},
-                {"name": "ENVIRONMENT", "value": "${ENVIRONMENT}"}
+                {"name": "POSTGRES_SERVER", "value": "${{ secrets.POSTGRES_SERVER }}"},
+                {"name": "POSTGRES_USER", "value": "${{ secrets.POSTGRES_USER }}"},
+                {"name": "POSTGRES_PASSWORD", "value": "${{ secrets.POSTGRES_PASSWORD }}"},
+                {"name": "POSTGRES_DB", "value": "${{ secrets.POSTGRES_DB }}"},
+                {"name": "POSTGRES_PORT", "value": "${{ secrets.POSTGRES_PORT }}"},
+                {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
+                {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
+                {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
+                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
               ]
             }
           ]
@@ -131,12 +160,12 @@ jobs:
 
     - name: Create or Update Load Balancer
       run: |
-        VPC_ID=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
-        LB_NAME="${ENVIRONMENT}-${PROJECT_NAME}-alb"
+        LB_NAME="${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-alb"
         LB_ARN=$(aws elbv2 describe-load-balancers --names $LB_NAME --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
         if [ -z "$LB_ARN" ] || [ "$LB_ARN" == "None" ]; then
           echo "Creating new load balancer: $LB_NAME"
@@ -150,7 +179,7 @@ jobs:
           echo "Load balancer already exists: $LB_NAME"
         fi
 
-        TG_NAME="${ENVIRONMENT}-${PROJECT_NAME}-tg"
+        TG_NAME="${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-tg"
         TG_ARN=$(aws elbv2 describe-target-groups --names $TG_NAME --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
         if [ -z "$TG_ARN" ] || [ "$TG_ARN" == "None" ]; then
           echo "Creating new target group: $TG_NAME"
@@ -183,9 +212,9 @@ jobs:
 
     - name: Create or Update ECS Service
       run: |
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
         if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query "services[?status=='ACTIVE']" --output text | grep -q .; then
           aws ecs update-service \
