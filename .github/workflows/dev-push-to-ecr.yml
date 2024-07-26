@@ -8,7 +8,7 @@ on:
 jobs:
   build-and-deploy-app:
     runs-on: self-hosted  
-    environment: ${{ secrets.ENVIRONMENT }}
+    environment: DEV 
 
     env: 
       POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
@@ -23,13 +23,12 @@ jobs:
       FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
       PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
       ENVIRONMENT: ${{ secrets.ENVIRONMENT }}
-      ECR_REPOSITORY_BACKEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-backend
-      ECR_REPOSITORY_FRONTEND: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-frontend
-      TAG: ${{ github.sha }}
-      ECS_CLUSTER: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
-      ECS_SERVICE: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-service
-      ECS_TASK_DEFINITION: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-task
-      CONTAINER_NAME: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-container
+      ECR_REPOSITORY_BACKEND: dev-${{ secrets.PROJECT_NAME }}-backend
+      ECR_REPOSITORY_FRONTEND: dev-${{ secrets.PROJECT_NAME }}-frontend
+      ECS_CLUSTER: dev-${{ secrets.PROJECT_NAME }}-cluster
+      ECS_SERVICE: dev-${{ secrets.PROJECT_NAME }}-service
+      ECS_TASK_DEFINITION: dev-${{ secrets.PROJECT_NAME }}-task
+      CONTAINER_NAME: dev-${{ secrets.PROJECT_NAME }}-container
 
     steps:
     - name: Install Docker and Docker Compose
