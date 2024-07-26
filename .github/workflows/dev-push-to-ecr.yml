@@ -208,14 +208,6 @@ jobs:
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
                 {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
               ],
-              "logConfiguration": {
-                "logDriver": "awslogs",
-                "options": {
-                  "awslogs-group": "/ecs/${{ env.ECS_TASK_DEFINITION }}",
-                  "awslogs-region": "${{ env.AWS_REGION }}",
-                  "awslogs-stream-prefix": "ecs"
-                }
-              }
             }
           ]
         }
