@@ -71,7 +71,7 @@ jobs:
         export TAG="${TAG}"
 
         # Build the frontend image
-        docker-compose build frontend 
+        docker-compose build --no-cache frontend 
 
         # Tag the image with ECR repository
         docker tag "${DOCKER_IMAGE_FRONTEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
@@ -93,7 +93,7 @@ jobs:
         export TAG="${TAG}"
 
         # Build the backend image
-        docker-compose build backend
+        docker-compose --no-cache build backend
 
         # Tag the image with ECR repository
         docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
@@ -233,6 +233,7 @@ jobs:
                 {"name": "POSTGRES_DB", "value": "${{ secrets.POSTGRES_DB }}"},
                 {"name": "POSTGRES_PORT", "value": "${{ secrets.POSTGRES_PORT }}"},
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
+                {"name": "FIRST_SUPERUSER_NAME", "value": "${{ secrets.FIRST_SUPERUSER_NAME }}"},
                 {"name": "SECRET_KEY", "value": "${{ secrets.SECRET_KEY }}"},
                 {"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}"},
                 {"name": "ANTHROPIC_API_KEY", "value": "${{ secrets.ANTHROPIC_API_KEY }}"},
