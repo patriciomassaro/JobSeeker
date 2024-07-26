@@ -186,7 +186,7 @@ jobs:
           "containerDefinitions": [
             {
               "name": "${{ env.CONTAINER_NAME }}",
-              "image": "${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.TAG }}",
+              "image": "${{ steps.login-ecr.outputs.registry }}/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-backend:${{ github.sha }}",
               "portMappings": [
                 {
                   "containerPort": 80,
@@ -207,13 +207,13 @@ jobs:
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
                 {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
-              ],
+              ]
             }
           ]
         }
         EOF
         )
-        echo '$task_def' > task-definition.json
+        echo "$task_def" > task-definition.json
         aws ecs register-task-definition --cli-input-json file://task-definition.json
 
     - name: Create or Update Load Balancer
