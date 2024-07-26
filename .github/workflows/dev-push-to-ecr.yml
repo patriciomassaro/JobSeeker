@@ -103,6 +103,8 @@ jobs:
 
     - name: Deploy Network Stack
       run: |
+        echo "ENV: ${ENVIRONMENT}"
+        echo "PROJECT: ${PROJECT_NAME}"
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
           --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network \
@@ -121,7 +123,7 @@ jobs:
 
     - name: Create Task Definition
       run: |
-        cat > task-definition.json << EOL
+        task_def=$(cat <<EOF
         {
           "family": "${{ env.ECS_TASK_DEFINITION }}",
           "networkMode": "awsvpc",
@@ -148,22 +150,16 @@ jobs:
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
-                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"},
-                {"name": "SECRET_KEY", "value": "${{ secrets.SECRET_KEY }}"},
-                {"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}"},
-                {"name": "ANTHROPIC_API_KEY", "value": "${{ secrets.ANTHROPIC_API_KEY }}"}
+                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
               ]
             }
           ]
         }
-        EOL
-        
-        # Print the task definition for debugging (optional)
-        cat task-definition.json
-        
-        # Register the task definition
+        EOF
+        )
+        echo "$task_def" > task-definition.json
         aws ecs register-task-definition --cli-input-json file://task-definition.json
-    
+
     - name: Create or Update Load Balancer
       run: |
         VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
