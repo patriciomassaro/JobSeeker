@@ -17,7 +17,7 @@ env:
   FIRST_SUPERUSER_PASSWORD: ${{secrets.FIRST_SUPERUSER_PASSWORD}}
   PROJECT_NAME: ${{secrets.PROJECT_NAME}}
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
-  ENVIRONMENT: "dev"
+  ENVIRONMENT: ${{secrets.ENVIRONMENT}}
   TAG: latest
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
   ECS_CLUSTER: ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
@@ -114,8 +114,9 @@ jobs:
 
     - name: Create ECS Cluster
       run: |
+        echo "Creating ECS Cluster: $ECS_CLUSTER"
         aws ecs create-cluster \
-          --cluster-name ${{ env.ECS_CLUSTER }} \
+          --cluster-name $ECS_CLUSTER \
           --capacity-providers FARGATE \
           --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
 
