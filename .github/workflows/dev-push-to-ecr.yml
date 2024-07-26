@@ -101,6 +101,38 @@ jobs:
     #     # Push the image to ECR
     #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"   
 
+    - name: Create CloudWatch Log Group
+      run: |
+        LOG_GROUP_NAME="/ecs/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}"
+        aws logs create-log-group --log-group-name $LOG_GROUP_NAME || true
+        echo "LOG_GROUP_NAME=$LOG_GROUP_NAME" >> $GITHUB_ENV
+
+    - name: Update ECS Task Execution Role for CloudWatch Logs
+      run: |
+        ROLE_NAME="${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-ecs-execution-role"
+        
+        # Create an inline policy for CloudWatch Logs
+        POLICY_DOCUMENT='{
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:${{ env.AWS_REGION }}:*:log-group:${{ env.LOG_GROUP_NAME }}:*"
+            }
+          ]
+        }'
+        
+        # Put the inline policy
+        aws iam put-role-policy \
+          --role-name $ROLE_NAME \
+          --policy-name "CloudWatchLogsPolicy" \
+          --policy-document "$POLICY_DOCUMENT"
+
+
     - name: Create or Update ECS Task Execution Role
       run: |
         ROLE_NAME="${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-ecs-execution-role"
@@ -207,7 +239,15 @@ jobs:
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
                 {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
-              ]
+              ],
+              "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                  "awslogs-group": "${{ env.LOG_GROUP_NAME }}",
+                  "awslogs-region": "${{ env.AWS_REGION }}",
+                  "awslogs-stream-prefix": "ecs"
+                }
+              }
             }
           ]
         }
@@ -297,6 +337,12 @@ jobs:
         LB_DNS=$(aws elbv2 describe-load-balancers --load-balancer-arns $LB_ARN --query 'LoadBalancers[0].DNSName' --output text)
         echo "Your API is accessible at: http://$LB_DNS"
         echo "LB_DNS=$LB_DNS" >> $GITHUB_ENV
+
+    - name: Get CloudWatch Logs URL
+      run: |
+        LOGS_URL="https://${{ env.AWS_REGION }}.console.aws.amazon.com/cloudwatch/home?region=${{ env.AWS_REGION }}#logsV2:log-groups/log-group/${{ env.LOG_GROUP_NAME }}"
+        echo "CloudWatch Logs can be viewed at: $LOGS_URL"
+        echo "LOGS_URL=$LOGS_URL" >> $GITHUB_ENV
 
     - name: Cleanup
       if: always()
