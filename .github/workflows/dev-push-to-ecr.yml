@@ -115,7 +115,7 @@ jobs:
     - name: Create ECS Cluster
       run: |
         aws ecs create-cluster \
-          --cluster-name $ECS_CLUSTER \
+          --cluster-name ${{ env.ECS_CLUSTER }} \
           --capacity-providers FARGATE \
           --default-capacity-provider-strategy capacityProvider=FARGATE,weight=1
 
