@@ -103,8 +103,6 @@ jobs:
 
     - name: Deploy Network Stack
       run: |
-        echo "ENV: ${ENVIRONMENT}"
-        echo "PROJECT: ${PROJECT_NAME}"
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
           --stack-name ${ENVIRONMENT}-${PROJECT_NAME}-network \
@@ -123,7 +121,7 @@ jobs:
 
     - name: Create Task Definition
       run: |
-        task_def=$(cat <<EOF
+        cat > task-definition.json << EOL
         {
           "family": "${{ env.ECS_TASK_DEFINITION }}",
           "networkMode": "awsvpc",
@@ -158,11 +156,14 @@ jobs:
             }
           ]
         }
-        EOF
-        )
-        echo "$task_def" > task-definition.json
+        EOL
+        
+        # Print the task definition for debugging (optional)
+        cat task-definition.json
+        
+        # Register the task definition
         aws ecs register-task-definition --cli-input-json file://task-definition.json
-
+    
     - name: Create or Update Load Balancer
       run: |
         VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
