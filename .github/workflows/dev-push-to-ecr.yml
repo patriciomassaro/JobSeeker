@@ -4,6 +4,7 @@ on:
     branches: 
       - dev
 env: 
+  ENVIRONMENT: "dev"
   POSTGRES_SERVER: ${{ secrets.POSTGRES_SERVER }}
   POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
   POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -17,13 +18,12 @@ env:
   FIRST_SUPERUSER_PASSWORD: ${{secrets.FIRST_SUPERUSER_PASSWORD}}
   PROJECT_NAME: ${{secrets.PROJECT_NAME}}
   ECR_REPOSITORY_BACKEND: ${{secrets.ECR_REPOSITORY_BACKEND}}
-  ENVIRONMENT: "dev"
   TAG: latest
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_BACKEND }}
-  ECS_CLUSTER: dev-${{ secrets.PROJECT_NAME }}-cluster
-  ECS_SERVICE: dev-${{ secrets.PROJECT_NAME }}-service
-  ECS_TASK_DEFINITION: dev-${{ secrets.PROJECT_NAME }}-task
-  CONTAINER_NAME: dev-${{ secrets.PROJECT_NAME }}-container
+  ECS_CLUSTER: ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-cluster
+  ECS_SERVICE: ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-service
+  ECS_TASK_DEFINITION: ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-task
+  CONTAINER_NAME: ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-container
 
 
 
@@ -101,7 +101,6 @@ jobs:
     #     # Push the image to ECR
     #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"   
 
-
     - name: Deploy Network Stack
       run: |
         aws cloudformation deploy \
@@ -114,7 +113,6 @@ jobs:
 
     - name: Create ECS Cluster
       run: |
-
         echo "Creating ECS Cluster: ${{ env.ECS_CLUSTER }}"
         aws ecs create-cluster \
           --cluster-name ${{env.ECS_CLUSTER}} \
@@ -150,7 +148,7 @@ jobs:
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
-                {"name": "ENVIRONMENT", "value": "dev"}
+                {"name": "ENVIRONMENT", "value": "${{ env.ENVIRONMENT }}"}
               ]
             }
           ]
@@ -162,12 +160,12 @@ jobs:
 
     - name: Create or Update Load Balancer
       run: |
-        VPC_ID=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
-        LB_NAME="dev-${{ secrets.PROJECT_NAME }}-alb"
+        LB_NAME="${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-alb"
         LB_ARN=$(aws elbv2 describe-load-balancers --names $LB_NAME --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
         if [ -z "$LB_ARN" ] || [ "$LB_ARN" == "None" ]; then
           echo "Creating new load balancer: $LB_NAME"
@@ -181,7 +179,7 @@ jobs:
           echo "Load balancer already exists: $LB_NAME"
         fi
 
-        TG_NAME="dev-${{ secrets.PROJECT_NAME }}-tg"
+        TG_NAME="${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-tg"
         TG_ARN=$(aws elbv2 describe-target-groups --names $TG_NAME --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
         if [ -z "$TG_ARN" ] || [ "$TG_ARN" == "None" ]; then
           echo "Creating new target group: $TG_NAME"
@@ -203,7 +201,7 @@ jobs:
           aws elbv2 create-listener \
             --load-balancer-arn $LB_ARN \
             --protocol HTTP \
-            --port 80 dev\
+            --port 80 \
             --default-actions Type=forward,TargetGroupArn=$TG_ARN
         else
           echo "Listener already exists for load balancer"
@@ -214,9 +212,9 @@ jobs:
 
     - name: Create or Update ECS Service
       run: |
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ env.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
         if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query "services[?status=='ACTIVE']" --output text | grep -q .; then
           aws ecs update-service \
