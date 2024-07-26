@@ -218,7 +218,7 @@ jobs:
           "containerDefinitions": [
             {
               "name": "${{ env.CONTAINER_NAME }}",
-              "image": "${{ steps.login-ecr.outputs.registry }}/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-backend:${{ github.sha }}",
+              "image": "${{ steps.login-ecr.outputs.registry }}/${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-backend:latest",
               "portMappings": [
                 {
                   "containerPort": 80,
