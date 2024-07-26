@@ -106,7 +106,7 @@ jobs:
       run: |
         aws cloudformation deploy \
           --template-file infrastructure/network-resources.yml \
-          --stack-name ${{ secrets.PROJECT_NAME }}-$ENVIRONMENT-network \
+          --stack-name ${{ secrets.PROJECT_NAME }}-network \
           --parameter-overrides EnvironmentName=$ENVIRONMENT \
           --capabilities CAPABILITY_IAM
 
