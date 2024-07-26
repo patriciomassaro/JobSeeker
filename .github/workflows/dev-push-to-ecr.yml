@@ -148,6 +148,9 @@ jobs:
                 {"name": "POSTGRES_DB", "value": "${{ secrets.POSTGRES_DB }}"},
                 {"name": "POSTGRES_PORT", "value": "${{ secrets.POSTGRES_PORT }}"},
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
+                {"name": "SECRET_KEY", "value": "${{ secrets.SECRET_KEY }}"},
+                {"name": "OPENAI_API_KEY", "value": "${{ secrets.OPENAI_API_KEY }}"},
+                {"name": "ANTHROPIC_API_KEY", "value": "${{ secrets.ANTHROPIC_API_KEY }}"},
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
                 {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
