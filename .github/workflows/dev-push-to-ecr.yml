@@ -150,7 +150,7 @@ jobs:
                 {"name": "FIRST_SUPERUSER", "value": "${{ secrets.FIRST_SUPERUSER }}"},
                 {"name": "FIRST_SUPERUSER_PASSWORD", "value": "${{ secrets.FIRST_SUPERUSER_PASSWORD }}"},
                 {"name": "PROJECT_NAME", "value": "${{ secrets.PROJECT_NAME }}"},
-                {"name": "ENVIRONMENT", "value": "${{ secrets.ENVIRONMENT }}"}
+                {"name": "ENVIRONMENT", "value": "dev"}
               ]
             }
           ]
@@ -162,12 +162,12 @@ jobs:
 
     - name: Create or Update Load Balancer
       run: |
-        VPC_ID=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        VPC_ID=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='VpcId'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
-        LB_NAME="${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-alb"
+        LB_NAME="dev-${{ secrets.PROJECT_NAME }}-alb"
         LB_ARN=$(aws elbv2 describe-load-balancers --names $LB_NAME --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || echo "")
         if [ -z "$LB_ARN" ] || [ "$LB_ARN" == "None" ]; then
           echo "Creating new load balancer: $LB_NAME"
@@ -181,7 +181,7 @@ jobs:
           echo "Load balancer already exists: $LB_NAME"
         fi
 
-        TG_NAME="${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-tg"
+        TG_NAME="dev-${{ secrets.PROJECT_NAME }}-tg"
         TG_ARN=$(aws elbv2 describe-target-groups --names $TG_NAME --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || echo "")
         if [ -z "$TG_ARN" ] || [ "$TG_ARN" == "None" ]; then
           echo "Creating new target group: $TG_NAME"
@@ -203,7 +203,7 @@ jobs:
           aws elbv2 create-listener \
             --load-balancer-arn $LB_ARN \
             --protocol HTTP \
-            --port 80 \
+            --port 80 dev\
             --default-actions Type=forward,TargetGroupArn=$TG_ARN
         else
           echo "Listener already exists for load balancer"
@@ -214,9 +214,9 @@ jobs:
 
     - name: Create or Update ECS Service
       run: |
-        SUBNET_1=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
-        SUBNET_2=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
-        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name ${{ secrets.ENVIRONMENT }}-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
+        SUBNET_1=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet1'].OutputValue" --output text)
+        SUBNET_2=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='PublicSubnet2'].OutputValue" --output text)
+        SECURITY_GROUP=$(aws cloudformation describe-stacks --stack-name dev-${{ secrets.PROJECT_NAME }}-network --query "Stacks[0].Outputs[?OutputKey=='ECSSecurityGroup'].OutputValue" --output text)
 
         if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE --query "services[?status=='ACTIVE']" --output text | grep -q .; then
           aws ecs update-service \
