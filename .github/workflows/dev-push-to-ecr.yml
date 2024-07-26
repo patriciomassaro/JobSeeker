@@ -101,6 +101,58 @@ jobs:
     #     # Push the image to ECR
     #     docker push "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"   
 
+    - name: Create or Update ECS Task Execution Role
+      run: |
+        ROLE_NAME="${{ env.ENVIRONMENT }}-${{ env.PROJECT_NAME }}-ecs-execution-role"
+        POLICY_ARN="arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        
+        # Check if the role already exists
+        if aws iam get-role --role-name $ROLE_NAME 2>/dev/null; then
+          echo "Role $ROLE_NAME already exists. Updating..."
+          
+          # Update the assume role policy document
+          aws iam update-assume-role-policy --role-name $ROLE_NAME --policy-document '{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }'
+        else
+          echo "Creating new role $ROLE_NAME..."
+          # Create the role
+          aws iam create-role --role-name $ROLE_NAME --assume-role-policy-document '{
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs-tasks.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }'
+        fi
+        
+        # Check if the policy is already attached
+        if ! aws iam list-attached-role-policies --role-name $ROLE_NAME --query "AttachedPolicies[?PolicyArn=='$POLICY_ARN'].PolicyArn" --output text | grep -q "$POLICY_ARN"; then
+          echo "Attaching policy $POLICY_ARN to role $ROLE_NAME..."
+          # Attach the necessary policy
+          aws iam attach-role-policy --role-name $ROLE_NAME --policy-arn $POLICY_ARN
+        else
+          echo "Policy $POLICY_ARN is already attached to role $ROLE_NAME."
+        fi
+        
+        # Get the role ARN
+        ROLE_ARN=$(aws iam get-role --role-name $ROLE_NAME --query 'Role.Arn' --output text)
+        echo "ECS_EXECUTION_ROLE_ARN=$ROLE_ARN" >> $GITHUB_ENV
+
     - name: Deploy Network Stack
       run: |
         echo "ENV: ${ENVIRONMENT}"
@@ -130,6 +182,7 @@ jobs:
           "requiresCompatibilities": ["FARGATE"],
           "cpu": "256",
           "memory": "512",
+          "executionRoleArn": "${{ env.ECS_EXECUTION_ROLE_ARN }}",
           "containerDefinitions": [
             {
               "name": "${{ env.CONTAINER_NAME }}",
