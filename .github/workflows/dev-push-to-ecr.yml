@@ -71,7 +71,7 @@ jobs:
         export TAG="${TAG}"
 
         # Build the frontend image
-        docker-compose build --no-cache frontend 
+        docker-compose build  frontend 
 
         # Tag the image with ECR repository
         docker tag "${DOCKER_IMAGE_FRONTEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
@@ -93,7 +93,7 @@ jobs:
         export TAG="${TAG}"
 
         # Build the backend image
-        docker-compose  build --no-cache backend
+        docker-compose  build  backend
 
         # Tag the image with ECR repository
         docker tag "${DOCKER_IMAGE_BACKEND}:${TAG}" "${ECR_REGISTRY}/${repo_name}:${IMAGE_TAG}"
@@ -349,3 +349,4 @@ jobs:
       if: always()
       run: |
         docker-compose down
+        docker system prune -a --volumes
