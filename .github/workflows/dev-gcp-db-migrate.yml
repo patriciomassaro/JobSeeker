@@ -39,7 +39,7 @@ jobs:
         pip install alembic sqlalchemy psycopg2-binary sqlmodel psycopg python-jose passlib pydantic-settings
 
     - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v0
+      uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         service_account_key: ${{ secrets.GCP_SA_KEY }}
@@ -54,12 +54,12 @@ jobs:
       run: |
         ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.POSTGRES_SERVER }}=tcp:5432 &
 
-    - name: Check Alembic environment Python version
-      run: |
-        cd backend
-        python -c "import sys; print(sys.version)"
-        export PYTHONPATH=$PYTHONPATH:$(pwd)
-        python -m alembic current
+    # - name: Check Alembic environment Python version
+    #   run: |
+    #     cd backend
+    #     python -c "import sys; print(sys.version)"
+    #     export PYTHONPATH=$PYTHONPATH:$(pwd)
+    #     python -m alembic current
 
     - name: Run Alembic migrations
       run: |
