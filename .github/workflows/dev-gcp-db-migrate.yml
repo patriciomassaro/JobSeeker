@@ -61,7 +61,7 @@ jobs:
         echo "Cloud SQL Proxy status:"
         ps aux | grep cloud_sql_proxy
         echo "Attempting to connect to database:"
-        PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -d $DB_NAME -p $DB_PORT -c "SELECT 1;"
+        PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -p $DB_PORT -c "SELECT 1;"
 
     - name: Check Alembic environment Python version
       run: |
