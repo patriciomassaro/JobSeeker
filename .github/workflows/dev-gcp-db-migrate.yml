@@ -52,9 +52,20 @@ jobs:
       run: |
         wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
         chmod +x cloud_sql_proxy
-        ./cloud_sql_proxy -instances=${{ secrets.GCP_PROJECT_ID }}:${{ secrets.GCP_REGION }}:${{ secrets.DB_INSTANCE }}=tcp:5432 &
+        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.POSTGRES_SERVER }}=tcp:5432 &
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+
+    - name: Debug Information
+      run: |
+        echo "POSTGRES_SERVER: $POSTGRES_SERVER"
+        echo "POSTGRES_DB: $POSTGRES_DB"
+        echo "POSTGRES_USER: $POSTGRES_USER"
+        echo "POSTGRES_PORT: $POSTGRES_PORT"
+        echo "Cloud SQL Proxy status:"
+        ps aux | grep cloud_sql_proxy
+        echo "Attempting to connect to database:"
+        PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_SERVER -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1;"
 
     - name: Check Alembic environment Python version
       run: |
