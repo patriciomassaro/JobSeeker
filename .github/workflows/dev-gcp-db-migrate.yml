@@ -1,0 +1,86 @@
+name: Apply DB Migrations to GCP
+
+on:
+  push:
+    branches:
+      - dev
+  
+
+env:
+  POSTGRES_SERVER: ${{secrets.DB_INSTANCE}}
+  POSTGRES_USER: ${{ secrets.DB_USER }}
+  POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  POSTGRES_DB: ${{ secrets.DB_NAME }}
+  POSTGRES_PORT: ${{ secrets.DB_PORT }}
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_REGION: ${{ secrets.GCP_REGION }}
+  FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
+  FIRST_SUPERUSER_NAME: ${{ secrets.FIRST_SUPERUSER_NAME }}
+  FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
+  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+
+jobs:
+  apply-migrations:
+    runs-on: ubuntu-latest
+    environment: DEV
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install alembic sqlalchemy psycopg2-binary sqlmodel psycopg python-jose passlib pydantic-settings
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Get Cloud SQL Proxy
+      run: |
+        wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
+        chmod +x cloud_sql_proxy
+
+    - name: Run Cloud SQL Proxy
+      run: |
+        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ secrets.DB_INSTANCE }}=tcp:5432 &
+
+    - name: Check Alembic environment Python version
+      run: |
+        cd backend
+        python -c "import sys; print(sys.version)"
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        python -m alembic current
+
+    - name: Run Alembic migrations
+      run: |
+        cd backend
+        echo "Current directory:"
+        pwd
+        echo "Directory contents:"
+        ls -R
+        echo "PYTHONPATH:"
+        echo $PYTHONPATH
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        python -m alembic upgrade head
+
+    - name: Verify migration
+      env:
+        PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+      run: |
+        psql -h ${{ env.POSTGRES_SERVER }} -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "SELECT version_num FROM alembic_version;"
+
+    - name: Insert initial data
+      run: |
+        cd backend
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        python -c "from app.initial_data import main; main()"
