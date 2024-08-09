@@ -52,26 +52,6 @@ jobs:
       run: |
         gcloud services enable run.googleapis.com
         gcloud services enable cloudbuild.googleapis.com
-        gcloud services enable vpcaccess.googleapis.com
-        gcloud services enable servicenetworking.googleapis.com
-
-    - name: Create VPC network (if not exists)
-      run: |
-        gcloud compute networks create my-vpc-network --subnet-mode=custom || true
-        gcloud compute networks subnets create my-subnet --network=my-vpc-network --range=10.0.0.0/24 --region=$REGION || true
-
-    - name: Create VPC connector (if not exists)
-      run: |
-        gcloud compute networks vpc-access connectors create $VPC_CONNECTOR_NAME \
-          --network my-vpc-network \
-          --region $REGION \
-          --range 10.8.0.0/28 || true
-
-    - name: Configure Cloud SQL to use private IP
-      run: |
-        gcloud sql instances patch $DB_INSTANCE \
-          --network=my-vpc-network \
-          --no-assign-ip
 
     - name: Deploy Backend to Cloud Run
       run: |
@@ -80,7 +60,6 @@ jobs:
           --platform managed \
           --region $REGION \
           --allow-unauthenticated \
-          --vpc-connector $VPC_CONNECTOR_NAME \
           --set-env-vars="SECRET_KEY=$SECRET_KEY,ENVIRONMENT=$ENVIRONMENT,DB_INSTANCE=$DB_INSTANCE,DB_NAME=$DB_NAME,DB_USER=$DB_USER,DB_PASSWORD=$DB_PASSWORD,DB_PORT=$DB_PORT,FIRST_SUPERUSER=$FIRST_SUPERUSER,FIRST_SUPERUSER_NAME=$FIRST_SUPERUSER_NAME,FIRST_SUPERUSER_PASSWORD=$FIRST_SUPERUSER_PASSWORD,PROJECT_NAME=$PROJECT_NAME,OPENAI_API_KEY=$OPENAI_API_KEY,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,CLOUD_RUN_CPU_PROFILING=1"
 
     - name: Get Backend URL
