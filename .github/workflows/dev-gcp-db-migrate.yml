@@ -52,7 +52,7 @@ jobs:
 
     - name: Run Cloud SQL Proxy
       run: |
-        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ secrets.DB_INSTANCE }}=tcp:5432 &
+        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.POSTGRES_SERVER }}=tcp:5432 &
 
     - name: Check Alembic environment Python version
       run: |
