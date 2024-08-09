@@ -8,11 +8,11 @@ services:
       - .env
     environment:
       - PGDATA=/var/lib/postgresql/data/pgdata
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_DB=${POSTGRES_DB?Variable not set}
+      - DB_PASSWORD=${DB_PASSWORD?Variable not set}
+      - DB_USER=${DB_USER?Variable not set}
+      - DB_DB=${DB_DB?Variable not set}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${DB_PORT}:5432"
 
 
   backend:
@@ -32,11 +32,11 @@ services:
       - SECRET_KEY=${SECRET_KEY?Variable not set}
       - FIRST_SUPERUSER=${FIRST_SUPERUSER?Variable not set}
       - FIRST_SUPERUSER_PASSWORD=${FIRST_SUPERUSER_PASSWORD?Variable not set}
-      - POSTGRES_SERVER=db
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER?Variable not set}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Variable not set}
+      - DB_SERVER=db
+      - DB_PORT=${DB_PORT}
+      - DB_DB=${DB_DB}
+      - DB_USER=${DB_USER?Variable not set}
+      - DB_PASSWORD=${DB_PASSWORD?Variable not set}
       - OPENAI_API_KEY=${OPENAI_API_KEY?Variable not set}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY?Variable not set}
 
