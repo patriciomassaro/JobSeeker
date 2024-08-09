@@ -38,28 +38,30 @@ jobs:
         python -m pip install --upgrade pip
         pip install alembic sqlalchemy psycopg2-binary sqlmodel psycopg python-jose passlib pydantic-settings
 
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        export_default_credentials: true
 
-    - name: Get Cloud SQL Proxy
+    - name: Set up Cloud SQL Proxy
       run: |
         wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
         chmod +x cloud_sql_proxy
+        ./cloud_sql_proxy -instances=${{ secrets.GCP_PROJECT_ID }}:${{ secrets.GCP_REGION }}:${{ secrets.DB_INSTANCE }}=tcp:5432 &
+      env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
 
-    - name: Run Cloud SQL Proxy
+    - name: Check Alembic environment Python version
       run: |
-        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.POSTGRES_SERVER }}=tcp:5432 &
-
-    # - name: Check Alembic environment Python version
-    #   run: |
-    #     cd backend
-    #     python -c "import sys; print(sys.version)"
-    #     export PYTHONPATH=$PYTHONPATH:$(pwd)
-    #     python -m alembic current
+        cd backend
+        python -c "import sys; print(sys.version)"
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        python -m alembic current
 
     - name: Run Alembic migrations
       run: |
