@@ -70,7 +70,7 @@ jobs:
         cd backend
         python -c "import sys; print(sys.version)"
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        export POSTGRES_SERVER=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
+        export DB_INSTANCE=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
         python -m alembic current
 
     - name: Run Alembic migrations
@@ -83,7 +83,7 @@ jobs:
         echo "PYTHONPATH:"
         echo $PYTHONPATH
         export PYTHONPATH=$PYTHONPATH:$(pwd)
-        export POSTGRES_SERVER=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
+        export DB_INSTANCE=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
 
         python -m alembic upgrade head
 
