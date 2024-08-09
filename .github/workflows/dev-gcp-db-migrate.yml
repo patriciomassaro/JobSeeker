@@ -113,4 +113,5 @@ jobs:
       run: |
         cd backend
         export PYTHONPATH=$PYTHONPATH:$(pwd)
+        export DB_INSTANCE
         python -c "from app.initial_data import main; main()"
