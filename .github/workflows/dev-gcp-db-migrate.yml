@@ -7,18 +7,14 @@ on:
   
 
 env:
-  POSTGRES_SERVER: ${{secrets.DB_INSTANCE}}
-  POSTGRES_USER: ${{ secrets.DB_USER }}
-  POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
-  POSTGRES_DB: ${{ secrets.DB_NAME }}
-  POSTGRES_PORT: ${{ secrets.DB_PORT }}
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  DB_INSTANCE: ${{vars.DB_INSTANCE}}
+  DB_USER: ${{ vars.DB_USER }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  DB_NAME: ${{ vars.DB_NAME }}
+  DB_PORT: ${{ vars.DB_PORT }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-  GCP_REGION: ${{ secrets.GCP_REGION }}
-  FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-  FIRST_SUPERUSER_NAME: ${{ secrets.FIRST_SUPERUSER_NAME }}
-  FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
 
 jobs:
   apply-migrations:
@@ -52,20 +48,20 @@ jobs:
       run: |
         wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
         chmod +x cloud_sql_proxy
-        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.POSTGRES_SERVER }}=tcp:5432 &
+        ./cloud_sql_proxy -instances=${{ env.GCP_PROJECT_ID }}:${{ env.GCP_REGION }}:${{ env.DB_INSTANCE }}=tcp:5432 &
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
 
     - name: Debug Information
       run: |
-        echo "POSTGRES_SERVER: $POSTGRES_SERVER"
-        echo "POSTGRES_DB: $POSTGRES_DB"
-        echo "POSTGRES_USER: $POSTGRES_USER"
-        echo "POSTGRES_PORT: $POSTGRES_PORT"
+        echo "DB_INSTANCE: $DB_INSTANCE"
+        echo "DB_NAME: $DB_NAME"
+        echo "DB_USER: $DB_USER"
+        echo "DB_PORT: $POSTGRES_PORT"
         echo "Cloud SQL Proxy status:"
         ps aux | grep cloud_sql_proxy
         echo "Attempting to connect to database:"
-        PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_SERVER -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1;"
+        PGPASSWORD=$DB_PASSWORD psql -h $DB_INSTANCE -U $DB_USER -d $DB_NAME -c "SELECT 1;"
 
     - name: Check Alembic environment Python version
       run: |
@@ -88,9 +84,9 @@ jobs:
 
     - name: Verify migration
       env:
-        PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        PGPASSWORD: ${{ env.DB_PASSWORD }}
       run: |
-        psql -h ${{ env.POSTGRES_SERVER }} -U ${{ env.POSTGRES_USER }} -d ${{ env.POSTGRES_DB }} -c "SELECT version_num FROM alembic_version;"
+        psql -h ${{ env.DB_INSTANCE }} -U ${{ env.DB_USER }} -d ${{ env.DB_NAME }} -c "SELECT version_num FROM alembic_version;"
 
     - name: Insert initial data
       run: |
