@@ -52,7 +52,9 @@ jobs:
       env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
 
-    - name: Debug Information
+    - name: Debug Information  
+      env:
+        PGPASSWORD: ${{ env.DB_PASSWORD }}
       run: |
         echo "DB_INSTANCE: $DB_INSTANCE"
         echo "DB_NAME: $DB_NAME"
@@ -61,7 +63,7 @@ jobs:
         echo "Cloud SQL Proxy status:"
         ps aux | grep cloud_sql_proxy
         echo "Attempting to connect to database:"
-        PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -p $DB_PORT -c "SELECT 1;"
+        psql -h 127.0.0.1 -U $DB_USER -p $DB_PORT -c "SELECT 1;"
 
     - name: Check Alembic environment Python version
       run: |
