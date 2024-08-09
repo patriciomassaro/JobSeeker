@@ -57,17 +57,18 @@ jobs:
         echo "DB_INSTANCE: $DB_INSTANCE"
         echo "DB_NAME: $DB_NAME"
         echo "DB_USER: $DB_USER"
-        echo "DB_PORT: $POSTGRES_PORT"
+        echo "DB_PORT: $DB_PORT"
         echo "Cloud SQL Proxy status:"
         ps aux | grep cloud_sql_proxy
         echo "Attempting to connect to database:"
-        PGPASSWORD=$DB_PASSWORD psql -h $DB_INSTANCE -U $DB_USER -d $DB_NAME -c "SELECT 1;"
+        PGPASSWORD=$DB_PASSWORD psql -h 127.0.0.1 -U $DB_USER -d $DB_NAME -p $DB_PORT -c "SELECT 1;"
 
     - name: Check Alembic environment Python version
       run: |
         cd backend
         python -c "import sys; print(sys.version)"
         export PYTHONPATH=$PYTHONPATH:$(pwd)
+        export POSTGRES_SERVER=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
         python -m alembic current
 
     - name: Run Alembic migrations
@@ -80,13 +81,15 @@ jobs:
         echo "PYTHONPATH:"
         echo $PYTHONPATH
         export PYTHONPATH=$PYTHONPATH:$(pwd)
+        export POSTGRES_SERVER=127.0.0.1  # This is because Cloud SQL Proxy is listening on localhost
+
         python -m alembic upgrade head
 
     - name: Verify migration
       env:
         PGPASSWORD: ${{ env.DB_PASSWORD }}
       run: |
-        psql -h ${{ env.DB_INSTANCE }} -U ${{ env.DB_USER }} -d ${{ env.DB_NAME }} -c "SELECT version_num FROM alembic_version;"
+        psql -h 127.0.0.1 -U ${{ env.DB_USER }} -d ${{ env.DB_NAME }} -p $DB_PORT -c "SELECT version_num FROM alembic_version;"
 
     - name: Insert initial data
       run: |
