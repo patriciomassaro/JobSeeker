@@ -51,11 +51,11 @@ jobs:
         gcloud services enable run.googleapis.com
         gcloud services enable cloudbuild.googleapis.com
 
-    - name: Build and Push Images
-      run: |
-        chmod +x ./push_to_gcr.sh
-        ./push_to_gcr.sh
-
+    # - name: Build and Push Images
+    #   run: |
+    #     chmod +x ./push_to_gcr.sh
+    #     ./push_to_gcr.sh
+    #
     - name: Deploy Backend to Cloud Run
       run: |
         gcloud run deploy backend \
@@ -63,6 +63,7 @@ jobs:
           --platform managed \
           --region $REGION \
           --allow-unauthenticated \
+          --add-cloudsql-instances=$DB_INSTANCE
           --set-env-vars="SECRET_KEY=$SECRET_KEY,ENVIRONMENT=$ENVIRONMENT,DB_INSTANCE=$DB_INSTANCE,DB_NAME=$DB_NAME,DB_USER=$DB_USER,DB_PASSWORD=$DB_PASSWORD,DB_PORT=$DB_PORT,FIRST_SUPERUSER=$FIRST_SUPERUSER,FIRST_SUPERUSER_NAME=$FIRST_SUPERUSER_NAME,FIRST_SUPERUSER_PASSWORD=$FIRST_SUPERUSER_PASSWORD,PROJECT_NAME=$PROJECT_NAME,OPENAI_API_KEY=$OPENAI_API_KEY,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,CLOUD_RUN_CPU_PROFILING=1"
 
     - name: Get Backend URL
