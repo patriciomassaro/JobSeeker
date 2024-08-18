@@ -54,11 +54,11 @@ jobs:
         gcloud services enable sql-component.googleapis.com
 
 
-    # - name: Build and Push Images
-    #   run: |
-    #     chmod +x ./push_to_gcr.sh
-    #     ./push_to_gcr.sh
-    #
+    - name: Build and Push Images
+      run: |
+        chmod +x ./push_to_gcr.sh
+        ./push_to_gcr.sh
+
     - name: Deploy Backend to Cloud Run
       run: |
         gcloud run deploy backend \
