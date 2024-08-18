@@ -28,7 +28,7 @@ RUN apt-get update && \
 #
 # # Verify Chrome installation
 # RUN google-chrome --version
-#
+
 # # Install ChromeDriver
 # RUN CHROME_VERSION=$(google-chrome --product-version | cut -d'.' -f1-3) && \
 #     echo "Detected Chrome version: $CHROME_VERSION" && \
