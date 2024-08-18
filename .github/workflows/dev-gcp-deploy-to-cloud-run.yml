@@ -28,12 +28,10 @@ env:
   VPC_CONNECTOR_NAME: my-vpc-connector
   SECRET_KEY: ${{secrets.SECRET_KEY}}
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: DEV
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -48,11 +46,15 @@ jobs:
       with:
         project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-
     - name: Enable necessary APIs
       run: |
         gcloud services enable run.googleapis.com
         gcloud services enable cloudbuild.googleapis.com
+
+    - name: Build and Push Images
+      run: |
+        chmod +x ./push_to_gcr.sh
+        ./push_to_gcr.sh
 
     - name: Deploy Backend to Cloud Run
       run: |
