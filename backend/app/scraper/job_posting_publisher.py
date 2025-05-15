@@ -5,14 +5,15 @@ from sqlmodel import Session
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import itertools
+from sqlalchemy.exc import IntegrityError
 
-from app.scraper.rabbit_mq_handler import RabbitMQHandler
 from app.models import (
     ExperienceLevelsEnum,
     RemoteModalitiesEnum,
     SalaryRangeFiltersEnum,
     TimeFiltersEnum,
     JobPostingQueries,
+    JobPostingsToScrape,
 )
 from app.logger import Logger
 from app.core.db import engine
@@ -130,7 +131,6 @@ class JobIdsFetcher:
         self,
         jobs_base_url: str = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
         log_file_name: str = "scraper.log",
-        rabbitmq_queue_name: str = "job_ids",
         job_ids_fetch_workers: int = 50,
         max_wait_time: int = 75,
         max_retries: int = 30,
@@ -144,17 +144,6 @@ class JobIdsFetcher:
             prefix="JobIdsFetcher", log_file_name=log_file_name
         ).get_logger()
         self.query_builder = QueryBuilder(base_url=jobs_base_url)
-        self.rabbitmq_handler = RabbitMQHandler(log_file_name=log_file_name)
-        self.rabbitmq_queue_name = rabbitmq_queue_name
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.rabbitmq_handler.close_connection()
-
-    def enqueue_job_id(self, job_id: str) -> None:
-        self.rabbitmq_handler.publish_message(job_id, self.rabbitmq_queue_name)
 
     def perform_request(self, url: str) -> requests.Response | None:
         for retry in range(self.max_retries):
@@ -216,6 +205,17 @@ class JobIdsFetcher:
             job_results, flag_results = zip(*results)
             return list(job_results), any(flag_results)
 
+    def run_job_ids_to_db(self, job_ids: list[str]) -> None:
+        with Session(engine) as session:
+            for job_id in job_ids:
+                try:
+                    job_posting = JobPostingsToScrape(linkedin_job_id=int(job_id))
+                    session.add(job_posting)
+                    session.commit()
+                except IntegrityError:
+                    session.rollback()
+                    print(f"Job ID {job_id} already exists in the database. Skipping.")
+
     def run_scraping_job(
         self,
         keywords: str | None = None,
@@ -237,7 +237,7 @@ class JobIdsFetcher:
         )
         url = self.query_builder.build_url_and_write_to_db()
         job_ids = self.fetch_all_job_ids(url)
-        self.enqueue_job_ids(job_ids)
+        self.run_job_ids_to_db(job_ids)
 
     def build_query(
         self,
@@ -277,10 +277,6 @@ class JobIdsFetcher:
             batch_start += self.job_ids_fetch_workers
         return list(set(all_job_ids))
 
-    def enqueue_job_ids(self, job_ids: list[str]) -> None:
-        for job_id in job_ids:
-            self.enqueue_job_id(job_id)
-
 
 def main():
     job_keywords = [
@@ -303,12 +299,12 @@ def main():
         "Machine Learning Developer",
     ]
 
-    with JobIdsFetcher(job_ids_fetch_workers=20) as job_ids_fetcher:
-        for job_keyword in job_keywords:
-            job_ids_fetcher.run_scraping_job(
-                keywords=job_keyword,
-                location="United States",
-            )
+    job_ids_fetcher = JobIdsFetcher(job_ids_fetch_workers=10, max_wait_time=10)
+    for job_keyword in job_keywords:
+        job_ids_fetcher.run_scraping_job(
+            keywords=job_keyword,
+            location="Washington DC",
+        )
 
 
 if __name__ == "__main__":

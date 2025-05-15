@@ -149,7 +149,7 @@ async def generate_resume(
     if not comparison or not comparison.job_posting_id:
         return Message(message="Comparison does not exist or job posting id is missing")
 
-    extract_job_posting(
+    await extract_job_posting(
         session=session,
         current_user=current_user,
         job_posting_id=comparison.job_posting_id,
@@ -206,7 +206,7 @@ async def generate_cover_letter(
         return Message(message="Comparison does not exist")
 
     # Ensure the job posting summary is extracted
-    extract_job_posting(
+    await extract_job_posting(
         session=session,
         current_user=current_user,
         job_posting_id=comparison.job_posting_id,

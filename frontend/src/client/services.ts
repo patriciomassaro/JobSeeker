@@ -525,11 +525,11 @@ export class UserComparisonServices {
 
 
 
-export class ModelNamesService {
+export class DimensionsService {
   public static getModelNames(): CancelablePromise<ModelNames[]> {
     return __request(OpenAPI, {
       method: 'GET',
-      url: '/api/v1/model-names'
+      url: '/api/v1/dimensions/model-names'
     })
   }
 }

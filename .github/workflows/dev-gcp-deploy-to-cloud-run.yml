@@ -1,0 +1,85 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - dev  # or your default branch
+
+env:
+  # Variables
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
+  DB_INSTANCE: ${{ vars.DB_INSTANCE }}
+  DB_NAME: ${{ vars.DB_NAME }}
+  DB_PORT: ${{ vars.DB_PORT }}
+  DB_USER: ${{ vars.DB_USER }}
+  FIRST_SUPERUSER: ${{ vars.FIRST_SUPERUSER }}
+  FIRST_SUPERUSER_NAME: ${{ vars.FIRST_SUPERUSER_NAME }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
+  ENVIRONMENT: ${{vars.ENVIRONMENT}}
+  PORT: ${{vars.PORT}}
+  
+  # Secrets
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+  FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  VPC_CONNECTOR_NAME: my-vpc-connector
+  SECRET_KEY: ${{secrets.SECRET_KEY}}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: DEV
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+    - name: Enable necessary APIs
+      run: |
+        gcloud services enable run.googleapis.com
+        gcloud services enable cloudbuild.googleapis.com
+        gcloud services enable sqladmin.googleapis.com
+        gcloud services enable sql-component.googleapis.com
+
+
+    # - name: Build and Push Images
+    #   run: |
+    #     chmod +x ./push_to_gcr.sh
+    #     ./push_to_gcr.sh
+    #
+    - name: Deploy Backend to Cloud Run
+      run: |
+        gcloud run deploy backend \
+          --image gcr.io/$PROJECT_ID/backend:latest \
+          --platform managed \
+          --region $REGION \
+          --allow-unauthenticated \
+          --add-cloudsql-instances=$DB_INSTANCE
+          --set-env-vars="SECRET_KEY=$SECRET_KEY,ENVIRONMENT=$ENVIRONMENT,DB_INSTANCE=127.0.0.1,DB_NAME=$DB_NAME,DB_USER=$DB_USER,DB_PASSWORD=$DB_PASSWORD,DB_PORT=$DB_PORT,FIRST_SUPERUSER=$FIRST_SUPERUSER,FIRST_SUPERUSER_NAME=$FIRST_SUPERUSER_NAME,FIRST_SUPERUSER_PASSWORD=$FIRST_SUPERUSER_PASSWORD,PROJECT_NAME=$PROJECT_NAME,OPENAI_API_KEY=$OPENAI_API_KEY,ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY,CLOUD_RUN_CPU_PROFILING=1"
+
+    - name: Get Backend URL
+      id: get-backend-url
+      run: |
+        BACKEND_URL=$(gcloud run services describe backend --region $REGION --format 'value(status.url)')
+        echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_OUTPUT
+
+    - name: Deploy Frontend to Cloud Run
+      run: |
+        gcloud run deploy frontend \
+          --image gcr.io/$PROJECT_ID/frontend:latest \
+          --platform managed \
+          --region $REGION \
+          --allow-unauthenticated \
+          --set-env-vars="VITE_API_URL=${{ steps.get-backend-url.outputs.BACKEND_URL }}"

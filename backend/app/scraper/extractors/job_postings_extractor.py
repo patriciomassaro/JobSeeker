@@ -5,16 +5,18 @@ from bs4.element import Tag
 import random
 import time
 import re
+import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from app.models import (
     JobPostings,
+    JobPostingsToScrape,
     SeniorityLevelsEnum,
     EmploymentTypesEnum,
 )
 from app.logger import Logger
 from app.core.db import engine
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 JOB_POSTING_BASE_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/"
 MAXIMUM_RETRIES = 40
@@ -285,14 +287,23 @@ class JobPostingDataExtractor:
                 .first()
             )
             if existing_posting:
-                # Update existing posting
                 for key, value in job_posting.dict().items():
                     if key not in ["id", "linkedin_id"]:
                         setattr(existing_posting, key, value)
                 session.add(existing_posting)
             else:
-                # Insert new posting
                 session.add(job_posting)
+            scraped_table = session.exec(
+                select(JobPostingsToScrape).where(
+                    JobPostingsToScrape.linkedin_job_id == int(job_id)
+                )
+            ).one_or_none()
+            if scraped_table:
+                scraped_table.processed = True
+                scraped_table.date_scraped = datetime.datetime.now()
+
+                self.logger.info(f"{job_id} - Marked as scraped")
+                session.add(scraped_table)
             session.commit()
             return job_posting.linkedin_id
 
